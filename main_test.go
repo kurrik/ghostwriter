@@ -16,23 +16,83 @@ package main
 
 import (
 	"testing"
-	"fmt"
+	"strings"
+	"sort"
+	"path/filepath"
 )
 
 type MockEnvironment struct {
 	Files map[string]string
 }
 
-func (e *MockEnvironment) GetFiles(path string) {
-	for k,v := range e.Files {
-		fmt.Printf("%v:%v\n", k, v)
+func (e *MockEnvironment) GetFiles(path string) []string {
+	paths := make([]string, 0)
+	if !strings.HasSuffix(path, string(filepath.Separator)) {
+		path = path + string(filepath.Separator)
+	}
+	for p, _ := range e.Files {
+		if strings.HasPrefix(p, path) {
+			p = strings.Replace(p, path, "", -1)
+			parts := strings.Split(p, string(filepath.Separator))
+			if len(parts) == 1 {
+				paths = append(paths, parts[0])
+			}
+		}
+	}
+	return paths
+}
+
+func (e *MockEnvironment) GetDirs(path string) []string {
+	dirmap := map[string]bool{}
+	if !strings.HasSuffix(path, string(filepath.Separator)) {
+		path = path + string(filepath.Separator)
+	}
+	for p, _ := range e.Files {
+		if strings.HasPrefix(p, path) {
+			p = strings.Replace(p, path, "", -1)
+			parts := strings.Split(p, string(filepath.Separator))
+			if len(parts) > 1 {
+				dirmap[parts[0]] = true
+			}
+		}
+	}
+	dirs := make([]string, len(dirmap))
+	i := 0
+	for dir, _ := range(dirmap) {
+		dirs[i] = dir
+		i++
+	}
+	return dirs
+}
+
+func Expect(t *testing.T, exp interface{}, act interface{}) {
+	if exp != act {
+		t.Fatalf("Expected %v, got %v", exp, act)
+	}
+}
+
+func ExpectStringSet(t *testing.T, exp sort.StringSlice, act sort.StringSlice) {
+	if len(exp) != len(act) {
+		t.Fatalf("Expected length %v, got %v", len(exp), len(act))
+	}
+	exp.Sort()
+	act.Sort()
+	for i, _ := range exp {
+		if exp[i] != act[i] {
+			t.Fatalf("Expected %v at %v, got %v", exp[i], i, act[i])
+		}
 	}
 }
 
 func TestEnvironment(t *testing.T) {
 	e := MockEnvironment{map[string]string{
-		"path": "foobar",
-		"path/foo": "foobar baz",
+		"path/a.txt": "Contents of a.txt",
+		"path/b.txt": "Contents of b.txt",
+		"path/dir1/c.txt": "Contents of c.txt",
+		"path/dir2/d.txt": "Contents of d.txt",
 	}}
-	e.GetFiles("path")
+	paths := e.GetFiles("path")
+	ExpectStringSet(t, []string{"a.txt", "b.txt"}, paths)
+	paths = e.GetDirs("path")
+	ExpectStringSet(t, []string{"dir1", "dir2"}, paths)
 }
