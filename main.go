@@ -17,17 +17,18 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/kurrik/go-fauxfile"
 	"log"
 )
 
 type Configuration struct {
 	source string
 	build  string
+	fs     fauxfile.Filesystem
 }
 
 type GhostWriter struct {
 	config *Configuration
-	env    *Environment
 }
 
 func (w *GhostWriter) Parse() error {
@@ -35,16 +36,12 @@ func (w *GhostWriter) Parse() error {
 	return nil
 }
 
-type Environment struct {
-}
-
 func main() {
 	c := &Configuration{}
 	flag.StringVar(&c.source, "source", "src", "Path to source files.")
 	flag.StringVar(&c.build, "build", "build", "Build output directory.")
 	flag.Parse()
-	e := &Environment{}
-	w := &GhostWriter{config: c, env: e}
+	w := &GhostWriter{config: c}
 	if err := w.Parse(); err != nil {
 		fmt.Println(err)
 	}
