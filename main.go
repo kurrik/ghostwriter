@@ -25,12 +25,12 @@ type Configuration struct {
 	build  string
 }
 
-type GostWriter struct {
+type GhostWriter struct {
 	config *Configuration
 	env    *Environment
 }
 
-func (w *GostWriter) Parse() error {
+func (w *GhostWriter) Parse() error {
 	log.Printf("Parsing directory %v", w.config.source)
 	return nil
 }
@@ -44,7 +44,7 @@ func main() {
 	flag.StringVar(&c.build, "build", "build", "Build output directory.")
 	flag.Parse()
 	e := &Environment{}
-	w := &GostWriter{config: c, env: e}
+	w := &GhostWriter{config: c, env: e}
 	if err := w.Parse(); err != nil {
 		fmt.Println(err)
 	}
