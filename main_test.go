@@ -15,19 +15,57 @@
 package main
 
 import (
-	"testing"
 	"github.com/kurrik/go-fauxfile"
+	"testing"
 )
 
-func TestFilesystem(t *testing.T) {
-	fs := fauxfile.NewMockFilesystem()
-	fs.MkdirAll("/src", 0755)
-	fs.MkdirAll("/build", 0755)
+func GetGhostWriter(fs fauxfile.Filesystem) *GhostWriter {
+	fs.MkdirAll("/home/test", 0755)
+	fs.Chdir("/home/test")
+	fs.Mkdir("src", 0755)
+	fs.Mkdir("build", 0755)
 	c := &Configuration{}
 	c.source = "src"
 	c.build = "build"
-	w := &GhostWriter{config: c}
+	return &GhostWriter{config: c}
+}
+
+func TestFilesystem(t *testing.T) {
+	fs := fauxfile.NewMockFilesystem()
+	w := GetGhostWriter(fs)
 	if err := w.Parse(); err != nil {
 		t.Fatalf("Parse returned error: %v", err)
+	}
+}
+
+func WriteFile(fs fauxfile.Filesystem, path string, data string) error {
+	var (
+		f   fauxfile.File
+		err error
+	)
+	if f, err = fs.Create(path); err != nil {
+		return err
+	}
+	if _, err = f.Write([]byte(data)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func TestParseConfig(t *testing.T) {
+	var (
+		fs   fauxfile.Filesystem
+		conf *Configuration
+		err  error
+	)
+	fs = fauxfile.NewMockFilesystem()
+	if err := WriteFile(fs, "config.yaml", "a: Value"); err != nil {
+		t.Fatalf("Error writing file: %v", err)
+	}
+	if conf, err = ParseConfig(fs, "config.yaml"); err != nil {
+		t.Fatalf("Error parsing config: %v", err)
+	}
+	if conf.source != "/" {
+		t.Fatalf("Unexpected config source: %v", conf.source)
 	}
 }

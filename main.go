@@ -18,13 +18,37 @@ import (
 	"flag"
 	"fmt"
 	"github.com/kurrik/go-fauxfile"
+	"launchpad.net/goyaml"
 	"log"
+	"os"
 )
 
 type Configuration struct {
 	source string
 	build  string
 	fs     fauxfile.Filesystem
+}
+
+func ParseConfig(fs fauxfile.Filesystem, path string) (*Configuration, error) {
+	var (
+		f    fauxfile.File
+		err  error
+		info os.FileInfo
+		conf *Configuration
+		data []byte
+	)
+	if f, err = fs.Open(path); err != nil {
+		return nil, err
+	}
+	if info, err = f.Stat(); err != nil {
+		return nil, err
+	}
+	conf = &Configuration{}
+	data = make([]byte, info.Size())
+	if err = goyaml.Unmarshal(data, conf); err != nil {
+		return nil, err
+	}
+	return conf, nil
 }
 
 type GhostWriter struct {
