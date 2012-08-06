@@ -55,17 +55,17 @@ func WriteFile(fs fauxfile.Filesystem, path string, data string) error {
 func TestParseConfig(t *testing.T) {
 	var (
 		fs   fauxfile.Filesystem
-		conf *Configuration
+		conf map[interface{}]interface{}
 		err  error
 	)
 	fs = fauxfile.NewMockFilesystem()
-	if err := WriteFile(fs, "config.yaml", "a: Value"); err != nil {
+	if err := WriteFile(fs, "config.yaml", "build: build"); err != nil {
 		t.Fatalf("Error writing file: %v", err)
 	}
 	if conf, err = ParseConfig(fs, "config.yaml"); err != nil {
 		t.Fatalf("Error parsing config: %v", err)
 	}
-	if conf.source != "/" {
-		t.Fatalf("Unexpected config source: %v", conf.source)
+	if conf["build"] != "build" {
+		t.Fatalf("Unexpected config build path: %v", conf["build"])
 	}
 }

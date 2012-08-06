@@ -29,12 +29,12 @@ type Configuration struct {
 	fs     fauxfile.Filesystem
 }
 
-func ParseConfig(fs fauxfile.Filesystem, path string) (*Configuration, error) {
+func ParseConfig(fs fauxfile.Filesystem, path string) (map[interface{}]interface{}, error) {
 	var (
 		f    fauxfile.File
 		err  error
 		info os.FileInfo
-		conf *Configuration
+		conf map[interface{}]interface{}
 		data []byte
 	)
 	if f, err = fs.Open(path); err != nil {
@@ -43,8 +43,12 @@ func ParseConfig(fs fauxfile.Filesystem, path string) (*Configuration, error) {
 	if info, err = f.Stat(); err != nil {
 		return nil, err
 	}
-	conf = &Configuration{}
+	conf = make(map[interface{}]interface{})
 	data = make([]byte, info.Size())
+	if _, err = f.Read(data); err != nil {
+		return nil, err
+	}
+	fmt.Println(string(data))
 	if err = goyaml.Unmarshal(data, conf); err != nil {
 		return nil, err
 	}
