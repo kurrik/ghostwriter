@@ -15,11 +15,12 @@
 package main
 
 import (
+	"io"
 	"fmt"
 	"github.com/kurrik/go-fauxfile"
+	"os"
 	"path/filepath"
 	"testing"
-	"os"
 )
 
 func PrintFs(fs fauxfile.Filesystem) {
@@ -75,6 +76,29 @@ func WriteFile(fs fauxfile.Filesystem, path string, data string) error {
 	return nil
 }
 
+func ReadFile(fs fauxfile.Filesystem, path string) (data string, err error) {
+	var (
+		f  fauxfile.File
+		fi os.FileInfo
+	)
+	if f, err = os.Open(path); err != nil {
+		return
+	}
+	defer f.Close()
+	if fi, err = f.Stat(); err != nil {
+		return
+	}
+	buf := make([]byte, fi.Size())
+	if _, err = f.Read(buf); err != nil {
+		if err != io.EOF {
+			return
+		}
+		err = nil
+	}
+	data = string(buf)
+	return
+}
+
 func TestProcess(t *testing.T) {
 	gw, _ := Setup()
 	if err := gw.Process(); err != nil {
@@ -94,5 +118,16 @@ func TestParseConfig(t *testing.T) {
 }
 
 func TestFilesCopiedToBuild(t *testing.T) {
-
+	gw, fs := Setup()
+	data1 := "javascript"
+	data2 := "css"
+	WriteFile(fs, "src/static/js/app.js", data1)
+	WriteFile(fs, "src/static/css/app.css", data2)
+	gw.Process()
+	if s, _ := ReadFile(fs, "build/static/js/app.js"); s != data1 {
+		t.Fatalf("Read: %v, Expected: %v", s, data1)
+	}
+	if s, _ := ReadFile(fs, "build/static/css/app.css"); s != data2 {
+		t.Fatalf("Read: %v, Expected: %v", s, data2)
+	}
 }
