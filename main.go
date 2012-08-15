@@ -21,55 +21,65 @@ import (
 	"launchpad.net/goyaml"
 	"log"
 	"os"
+	"path/filepath"
 )
 
-type Configuration struct {
+type Args struct {
 	source string
 	build  string
-	fs     fauxfile.Filesystem
 }
 
-func ParseConfig(fs fauxfile.Filesystem, path string) (map[interface{}]interface{}, error) {
-	var (
-		f    fauxfile.File
-		err  error
-		info os.FileInfo
-		conf map[interface{}]interface{}
-		data []byte
-	)
-	if f, err = fs.Open(path); err != nil {
-		return nil, err
-	}
-	if info, err = f.Stat(); err != nil {
-		return nil, err
-	}
-	conf = make(map[interface{}]interface{})
-	data = make([]byte, info.Size())
-	if _, err = f.Read(data); err != nil {
-		return nil, err
-	}
-	if err = goyaml.Unmarshal(data, conf); err != nil {
-		return nil, err
-	}
-	return conf, nil
+type Configuration struct {
+	fs fauxfile.Filesystem
 }
 
 type GhostWriter struct {
-	config *Configuration
+	args   *Args
+	fs     fauxfile.Filesystem
+	config map[interface{}]interface{}
 }
 
-func (w *GhostWriter) Parse() error {
-	log.Printf("Parsing directory %v", w.config.source)
+func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
+	gw := &GhostWriter{args: args, fs: fs}
+	return gw
+}
+
+func (gw *GhostWriter) Process() (err error) {
+	log.Printf("Parsing directory %v", gw.args.source)
+	gw.parseConfig(filepath.Join(gw.args.source, "config.yaml"))
 	return nil
 }
 
+func (gw *GhostWriter) parseConfig(path string) (err error) {
+	var (
+		f    fauxfile.File
+		info os.FileInfo
+		data []byte
+	)
+	if f, err = gw.fs.Open(path); err != nil {
+		return
+	}
+	if info, err = f.Stat(); err != nil {
+		return
+	}
+	gw.config = make(map[interface{}]interface{})
+	data = make([]byte, info.Size())
+	if _, err = f.Read(data); err != nil {
+		return
+	}
+	if err = goyaml.Unmarshal(data, gw.config); err != nil {
+		return
+	}
+	return
+}
+
 func main() {
-	c := &Configuration{}
-	flag.StringVar(&c.source, "source", "src", "Path to source files.")
-	flag.StringVar(&c.build, "build", "build", "Build output directory.")
+	a := &Args{}
+	flag.StringVar(&a.source, "source", "src", "Path to source files.")
+	flag.StringVar(&a.build, "build", "build", "Build output directory.")
 	flag.Parse()
-	w := &GhostWriter{config: c}
-	if err := w.Parse(); err != nil {
+	w := NewGhostWriter(&fauxfile.RealFilesystem{}, a)
+	if err := w.Process(); err != nil {
 		fmt.Println(err)
 	}
 }

@@ -15,27 +15,49 @@
 package main
 
 import (
+	"fmt"
 	"github.com/kurrik/go-fauxfile"
+	"path/filepath"
 	"testing"
+	"os"
 )
 
-func GetGhostWriter(fs fauxfile.Filesystem) *GhostWriter {
+func PrintFs(fs fauxfile.Filesystem) {
+	var (
+		dirs  []string
+		path  string
+		f     fauxfile.File
+		fi    os.FileInfo
+		files []os.FileInfo
+	)
+	dirs = append(dirs, "/")
+	for len(dirs) > 0 {
+		path = dirs[0]
+		dirs = dirs[1:]
+		f, _ = fs.Open(path)
+		fi, _ = f.Stat()
+		files, _ = f.Readdir(100)
+		for _, fi = range files {
+			name := filepath.Join(path, fi.Name())
+			fmt.Printf("%-30v %v %v\n", name, fi.Mode(), fi.IsDir())
+			if fi.IsDir() {
+				dirs = append(dirs, name)
+			}
+		}
+	}
+}
+
+func Setup() (gw *GhostWriter, fs fauxfile.Filesystem) {
+	fs = fauxfile.NewMockFilesystem()
 	fs.MkdirAll("/home/test", 0755)
 	fs.Chdir("/home/test")
 	fs.Mkdir("src", 0755)
 	fs.Mkdir("build", 0755)
-	c := &Configuration{}
-	c.source = "src"
-	c.build = "build"
-	return &GhostWriter{config: c}
-}
-
-func TestFilesystem(t *testing.T) {
-	fs := fauxfile.NewMockFilesystem()
-	w := GetGhostWriter(fs)
-	if err := w.Parse(); err != nil {
-		t.Fatalf("Parse returned error: %v", err)
-	}
+	gw = NewGhostWriter(fs, &Args{
+		source: "src",
+		build:  "build",
+	})
+	return
 }
 
 func WriteFile(fs fauxfile.Filesystem, path string, data string) error {
@@ -49,23 +71,28 @@ func WriteFile(fs fauxfile.Filesystem, path string, data string) error {
 	if _, err = f.Write([]byte(data)); err != nil {
 		return err
 	}
+	f.Close()
 	return nil
 }
 
+func TestProcess(t *testing.T) {
+	gw, _ := Setup()
+	if err := gw.Process(); err != nil {
+		t.Fatalf("Process returned error: %v", err)
+	}
+}
+
 func TestParseConfig(t *testing.T) {
-	var (
-		fs   fauxfile.Filesystem
-		conf map[interface{}]interface{}
-		err  error
-	)
-	fs = fauxfile.NewMockFilesystem()
-	if err := WriteFile(fs, "config.yaml", "build: build"); err != nil {
-		t.Fatalf("Error writing file: %v", err)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", "key: value")
+	if err := gw.parseConfig("/home/test/src/config.yaml"); err != nil {
+		t.Fatalf("parseConfig returned error: %v", err)
 	}
-	if conf, err = ParseConfig(fs, "config.yaml"); err != nil {
-		t.Fatalf("Error parsing config: %v", err)
+	if gw.config["key"] != "value" {
+		t.Fatalf("Unexpected config value: %v", gw.config["key"])
 	}
-	if conf["build"] != "build" {
-		t.Fatalf("Unexpected config build path: %v", conf["build"])
-	}
+}
+
+func TestFilesCopiedToBuild(t *testing.T) {
+
 }
