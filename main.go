@@ -48,7 +48,6 @@ func ParseConfig(fs fauxfile.Filesystem, path string) (map[interface{}]interface
 	if _, err = f.Read(data); err != nil {
 		return nil, err
 	}
-	fmt.Println(string(data))
 	if err = goyaml.Unmarshal(data, conf); err != nil {
 		return nil, err
 	}
