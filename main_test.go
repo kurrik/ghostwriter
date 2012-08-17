@@ -17,7 +17,7 @@ package main
 import (
 	"io"
 	"fmt"
-	"github.com/kurrik/go-fauxfile"
+	"github.com/kurrik/fauxfile"
 	"os"
 	"path/filepath"
 	"testing"

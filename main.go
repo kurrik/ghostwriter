@@ -17,7 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/kurrik/go-fauxfile"
+	"github.com/kurrik/fauxfile"
 	"launchpad.net/goyaml"
 	"log"
 	"os"
