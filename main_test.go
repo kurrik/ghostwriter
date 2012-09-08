@@ -114,7 +114,8 @@ site:
   title: Test blog
   root: www.example.com
 fmt:
-  date: %Y-%m-%d`
+  date: %Y-%m-%d
+  path: /{{date}}/{{slug}}`
 	body := `
 Hello World
 ===========
@@ -125,7 +126,8 @@ This is markdown
 	tmpl := `<!DOCTYPE html>
 <html>
   <head>
-    {{site.title}} - {{post.slug}}
+    <title>{{site.title}} - {{post.slug}}</title>
+    <link rel="canonical" href="{{post.permalink}}" />
   </head>
   <body>
     {{post.body}}
@@ -134,11 +136,15 @@ This is markdown
 	meta := `
 date: 2012-09-07
 slug: hello-world
-title: Hello World!`
+title: Hello World!
+tags:
+  - hello
+  - world`
 	html := `<!DOCTYPE html>
 <html>
   <head>
     <title>Test blog - Hello World!</title>
+    <link rel="canonical" href="http://www.example.com/2012-09-07/hello-world" />
   </head>
   <body>
     <h1>Hello World</h1>
