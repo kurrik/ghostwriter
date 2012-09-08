@@ -16,37 +16,10 @@ package main
 
 import (
 	"io"
-	"fmt"
 	"github.com/kurrik/fauxfile"
 	"os"
-	"path/filepath"
 	"testing"
 )
-
-func PrintFs(fs fauxfile.Filesystem) {
-	var (
-		dirs  []string
-		path  string
-		f     fauxfile.File
-		fi    os.FileInfo
-		files []os.FileInfo
-	)
-	dirs = append(dirs, "/")
-	for len(dirs) > 0 {
-		path = dirs[0]
-		dirs = dirs[1:]
-		f, _ = fs.Open(path)
-		fi, _ = f.Stat()
-		files, _ = f.Readdir(100)
-		for _, fi = range files {
-			name := filepath.Join(path, fi.Name())
-			fmt.Printf("%-30v %v %v\n", name, fi.Mode(), fi.IsDir())
-			if fi.IsDir() {
-				dirs = append(dirs, name)
-			}
-		}
-	}
-}
 
 func Setup() (gw *GhostWriter, fs fauxfile.Filesystem) {
 	fs = fauxfile.NewMockFilesystem()
@@ -106,6 +79,7 @@ func TestProcess(t *testing.T) {
 	}
 }
 
+// Ensures that config files are parsed and values pulled out.
 func TestParseConfig(t *testing.T) {
 	gw, fs := Setup()
 	WriteFile(fs, "src/config.yaml", "key: value")
@@ -117,6 +91,7 @@ func TestParseConfig(t *testing.T) {
 	}
 }
 
+// Ensures that static files are copied to the appropriate build locations.
 func TestFilesCopiedToBuild(t *testing.T) {
 	gw, fs := Setup()
 	data1 := "javascript"
@@ -131,3 +106,4 @@ func TestFilesCopiedToBuild(t *testing.T) {
 		t.Fatalf("Read: %v, Expected: %v", s, data2)
 	}
 }
+
