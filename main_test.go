@@ -85,7 +85,7 @@ func TestParseConfig(t *testing.T) {
 	WriteFile(fs, "src/config.yaml", "key: value")
 	if err := gw.parseConfig("/home/test/src/config.yaml"); err != nil {
 		t.Fatalf("parseConfig returned error: %v", err)
-	}
+}
 	if gw.config["key"] != "value" {
 		t.Fatalf("Unexpected config value: %v", gw.config["key"])
 	}
@@ -107,3 +107,51 @@ func TestFilesCopiedToBuild(t *testing.T) {
 	}
 }
 
+func TestRenderContent(t *testing.T) {
+	gw, fs := Setup()
+	conf := `
+site:
+  title: Test blog
+  root: www.example.com
+fmt:
+  date: %Y-%m-%d`
+	body := `
+Hello World
+===========
+This is a fake post, for testing.
+
+This is markdown
+----------------`
+	tmpl := `<!DOCTYPE html>
+<html>
+  <head>
+    {{site.title}} - {{post.slug}}
+  </head>
+  <body>
+    {{post.body}}
+  </body>
+</html>`
+	meta := `
+date: 2012-09-07
+slug: hello-world
+title: Hello World!`
+	html := `<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test blog - Hello World!</title>
+  </head>
+  <body>
+    <h1>Hello World</h1>
+    <p>This is a fake post, for testing.</p>
+    <h2>This is markdown</h2>
+  </body>
+</html>`
+	WriteFile(fs, "src/config.yaml", conf)
+	WriteFile(fs, "src/templates/post.mustache", tmpl)
+	WriteFile(fs, "src/posts/01-test/body.md", body)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", meta)
+	gw.Process()
+	if s, _ := ReadFile(fs, "build/2012-09-07/hello-world.html"); s != html {
+		t.Fatalf("Read: %v, Expected: %v", s, html)
+	}
+}
