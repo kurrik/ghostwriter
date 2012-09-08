@@ -151,7 +151,7 @@ title: Hello World!`
 	WriteFile(fs, "src/posts/01-test/body.md", body)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", meta)
 	gw.Process()
-	if s, _ := ReadFile(fs, "build/2012-09-07/hello-world.html"); s != html {
+	if s, _ := ReadFile(fs, "build/2012-09-07/hello-world"); s != html {
 		t.Fatalf("Read: %v, Expected: %v", s, html)
 	}
 }
