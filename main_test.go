@@ -15,37 +15,42 @@
 package main
 
 import (
-	"io"
 	"github.com/kurrik/fauxfile"
+	"io"
+	"io/ioutil"
+	"log"
 	"os"
+	"path"
 	"testing"
 )
 
-func Setup() (gw *GhostWriter, fs fauxfile.Filesystem) {
+func Setup() (gw *GhostWriter, fs *fauxfile.MockFilesystem) {
 	fs = fauxfile.NewMockFilesystem()
 	fs.MkdirAll("/home/test", 0755)
 	fs.Chdir("/home/test")
 	fs.Mkdir("src", 0755)
 	fs.Mkdir("build", 0755)
 	gw = NewGhostWriter(fs, &Args{
-		source: "src",
-		build:  "build",
+		src: "src",
+		dst: "build",
 	})
+	gw.log = log.New(ioutil.Discard, "", log.LstdFlags)
 	return
 }
 
-func WriteFile(fs fauxfile.Filesystem, path string, data string) error {
+func WriteFile(fs fauxfile.Filesystem, p string, data string) error {
 	var (
 		f   fauxfile.File
 		err error
 	)
-	if f, err = fs.Create(path); err != nil {
+	fs.MkdirAll(path.Dir(p), 0755)
+	if f, err = fs.Create(p); err != nil {
 		return err
 	}
+	defer f.Close()
 	if _, err = f.Write([]byte(data)); err != nil {
 		return err
 	}
-	f.Close()
 	return nil
 }
 
@@ -54,7 +59,7 @@ func ReadFile(fs fauxfile.Filesystem, path string) (data string, err error) {
 		f  fauxfile.File
 		fi os.FileInfo
 	)
-	if f, err = os.Open(path); err != nil {
+	if f, err = fs.Open(path); err != nil {
 		return
 	}
 	defer f.Close()
@@ -73,7 +78,9 @@ func ReadFile(fs fauxfile.Filesystem, path string) (data string, err error) {
 }
 
 func TestProcess(t *testing.T) {
-	gw, _ := Setup()
+	gw, fs := Setup()
+	WriteFile(fs, "/home/test/src/config.yaml", "")
+	fs.MkdirAll("/home/test/src/static", 0755)
 	if err := gw.Process(); err != nil {
 		t.Fatalf("Process returned error: %v", err)
 	}
@@ -82,10 +89,10 @@ func TestProcess(t *testing.T) {
 // Ensures that config files are parsed and values pulled out.
 func TestParseConfig(t *testing.T) {
 	gw, fs := Setup()
-	WriteFile(fs, "src/config.yaml", "key: value")
-	if err := gw.parseConfig("/home/test/src/config.yaml"); err != nil {
+	WriteFile(fs, "/home/test/src/config.yaml", "key: value")
+	if err := gw.parseConfig("config.yaml"); err != nil {
 		t.Fatalf("parseConfig returned error: %v", err)
-}
+	}
 	if gw.config["key"] != "value" {
 		t.Fatalf("Unexpected config value: %v", gw.config["key"])
 	}
@@ -98,12 +105,13 @@ func TestFilesCopiedToBuild(t *testing.T) {
 	data2 := "css"
 	WriteFile(fs, "src/static/js/app.js", data1)
 	WriteFile(fs, "src/static/css/app.css", data2)
+	WriteFile(fs, "src/config.yaml", "")
 	gw.Process()
 	if s, _ := ReadFile(fs, "build/static/js/app.js"); s != data1 {
-		t.Fatalf("Read: %v, Expected: %v", s, data1)
+		t.Errorf("Read: %v, Expected: %v", s, data1)
 	}
 	if s, _ := ReadFile(fs, "build/static/css/app.css"); s != data2 {
-		t.Fatalf("Read: %v, Expected: %v", s, data2)
+		t.Errorf("Read: %v, Expected: %v", s, data2)
 	}
 }
 
@@ -157,7 +165,11 @@ tags:
 	WriteFile(fs, "src/posts/01-test/body.md", body)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", meta)
 	gw.Process()
-	if s, _ := ReadFile(fs, "build/2012-09-07/hello-world"); s != html {
-		t.Fatalf("Read: %v, Expected: %v", s, html)
+	out, err := ReadFile(fs, "build/2012-09-07/hello-world")
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out != html {
+		t.Fatalf("Read: %v, Expected: %v", out, html)
 	}
 }
