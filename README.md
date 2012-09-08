@@ -10,5 +10,6 @@ Still really rough.  I'll update once I'm using this for actual projects.
 Installing
 ----------
 Run:
+
     go get launchpad.net/goyaml
     go get github.com/kurrik/fauxfile
