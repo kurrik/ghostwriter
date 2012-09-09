@@ -77,23 +77,16 @@ func ReadFile(fs fauxfile.Filesystem, path string) (data string, err error) {
 	return
 }
 
-func TestProcess(t *testing.T) {
-	gw, fs := Setup()
-	WriteFile(fs, "/home/test/src/config.yaml", "")
-	if err := gw.Process(); err != nil {
-		t.Fatalf("Process returned error: %v", err)
-	}
-}
-
-// Ensures that config files are parsed and values pulled out.
-func TestParseSiteMeta(t *testing.T) {
-	gw, fs := Setup()
-	conf := `
+SITE_META = `
 title: Test blog
 root: www.example.com
 pathformat: /{{date}}/{{slug}}
 dateformat: "%Y-%m-%d"`
-	WriteFile(fs, "/home/test/src/config.yaml", conf)
+
+// Ensures that config files are parsed and values pulled out.
+func TestParseSiteMeta(t *testing.T) {
+	gw, fs := Setup()
+	WriteFile(fs, "/home/test/src/config.yaml", SITE_META)
 	if err := gw.parseSiteMeta("config.yaml"); err != nil {
 		t.Fatalf("parseConfig returned error: %v", err)
 	}
@@ -108,6 +101,36 @@ dateformat: "%Y-%m-%d"`
 	}
 	if gw.site.meta.DateFormat != "%Y-%m-%d" {
 		t.Errorf("Bad date format, got %v", gw.site.meta.DateFormat)
+	}
+}
+
+POST_META = `
+date: 2012-09-07
+slug: hello-world
+title: Hello World!
+tags:
+  - hello
+  - world`
+
+// Ensures that post meta files are parsed and values pulled out.
+func TestParsePostMeta(t *testing.T) {
+	gw, fs := Setup()
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_META)
+	meta, err := gw.parsePostMeta("posts/01-test/meta.yaml")
+	if err != nil {
+		t.Fatalf("parsePostMeta returned error: %v", err)
+	}
+	if meta.Title != "Hello World!" {
+		t.Errorf("Bad title, got %v", meta.Title)
+	}
+	if meta.Date != "2012-09-07" {
+		t.Errorf("Bad date, got %v", meta.Date)
+	}
+	if meta.Slug != "hello-world" {
+		t.Errorf("Bad slug, got %v", meta.Slug)
+	}
+	if meta.Tags[0] != "hello" || meta.Tags[1] != "world" {
+		t.Errorf("Bad tags, got %v", meta.Tags)
 	}
 }
 
@@ -128,13 +151,9 @@ func TestFilesCopiedToBuild(t *testing.T) {
 	}
 }
 
+// Ensures post content is rendered appropriately.
 func TestRenderContent(t *testing.T) {
 	gw, fs := Setup()
-	conf := `
-title: Test blog
-root: www.example.com
-pathformat: /{{date}}/{{slug}}
-dateformat: \%Y-%m-%d`
 	body := `
 Hello World
 ===========
@@ -152,13 +171,6 @@ This is markdown
     {{post.body}}
   </body>
 </html>`
-	meta := `
-date: 2012-09-07
-slug: hello-world
-title: Hello World!
-tags:
-  - hello
-  - world`
 	html := `<!DOCTYPE html>
 <html>
   <head>
@@ -171,10 +183,10 @@ tags:
     <h2>This is markdown</h2>
   </body>
 </html>`
-	WriteFile(fs, "src/config.yaml", conf)
+	WriteFile(fs, "src/config.yaml", SITE_META)
 	WriteFile(fs, "src/templates/post.tmpl", tmpl)
 	WriteFile(fs, "src/posts/01-test/body.md", body)
-	WriteFile(fs, "src/posts/01-test/meta.yaml", meta)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_META)
 	var (
 		err error
 		out string
