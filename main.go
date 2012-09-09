@@ -146,27 +146,6 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 	return
 }
 
-func (gw *GhostWriter) unyaml(path string, out interface{}) (err error) {
-	var (
-		file fauxfile.File
-		info os.FileInfo
-		data []byte
-	)
-	if file, err = gw.fs.Open(path); err != nil {
-		return
-	}
-	defer file.Close()
-	if info, err = file.Stat(); err != nil {
-		return
-	}
-	data = make([]byte, info.Size())
-	if _, err = file.Read(data); err != nil {
-		return
-	}
-	err = goyaml.Unmarshal(data, out)
-	return
-}
-
 func (gw *GhostWriter) parseConfig(path string) (err error) {
 	src := filepath.Join(gw.args.src, path)
 	gw.log.Printf("Parsing config %v\n", src)
@@ -193,8 +172,28 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 	}
 	for _, p = range names {
 		fmt.Printf("Processing %v\n", p)
-
 	}
+	return
+}
+
+func (gw *GhostWriter) unyaml(path string, out interface{}) (err error) {
+	var (
+		file fauxfile.File
+		info os.FileInfo
+		data []byte
+	)
+	if file, err = gw.fs.Open(path); err != nil {
+		return
+	}
+	defer file.Close()
+	if info, err = file.Stat(); err != nil {
+		return
+	}
+	data = make([]byte, info.Size())
+	if _, err = file.Read(data); err != nil {
+		return
+	}
+	err = goyaml.Unmarshal(data, out)
 	return
 }
 
