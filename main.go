@@ -21,10 +21,8 @@ import (
 	"io"
 	"launchpad.net/goyaml"
 	"log"
-	"net/url"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 type Args struct {
@@ -37,10 +35,10 @@ type Configuration struct {
 }
 
 type GhostWriter struct {
-	args   *Args
-	fs     fauxfile.Filesystem
-	log    *log.Logger
-	site   *SiteData
+	args *Args
+	fs   fauxfile.Filesystem
+	log  *log.Logger
+	site *Site
 }
 
 func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
@@ -48,6 +46,7 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 		args: args,
 		fs:   fs,
 		log:  log.New(os.Stderr, "", log.LstdFlags),
+		site: &Site{},
 	}
 	return gw
 }
@@ -59,7 +58,7 @@ func (gw *GhostWriter) Process() (err error) {
 	if err = gw.copyStatic("static"); err != nil {
 		return
 	}
-	if err = gw.renderPosts("posts"); err != nil {
+	if err = gw.parsePosts("posts"); err != nil {
 		return
 	}
 	return
@@ -147,30 +146,35 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 	return
 }
 
-func (gw *GhostWriter) parseConfig(path string) (err error) {
+func (gw *GhostWriter) unyaml(path string, out interface{}) (err error) {
 	var (
-		src  string = filepath.Join(gw.args.src, path)
-		f    fauxfile.File
+		file fauxfile.File
 		info os.FileInfo
 		data []byte
 	)
-	gw.log.Printf("Parsing config %v\n", src)
-	if f, err = gw.fs.Open(src); err != nil {
+	if file, err = gw.fs.Open(path); err != nil {
 		return
 	}
-	if info, err = f.Stat(); err != nil {
+	defer file.Close()
+	if info, err = file.Stat(); err != nil {
 		return
 	}
-	gw.site = &SiteData{}
 	data = make([]byte, info.Size())
-	if _, err = f.Read(data); err != nil {
+	if _, err = file.Read(data); err != nil {
 		return
 	}
-	err = goyaml.Unmarshal(data, gw.site)
+	err = goyaml.Unmarshal(data, out)
 	return
 }
 
-func (gw *GhostWriter) renderPosts(name string) (err error) {
+func (gw *GhostWriter) parseConfig(path string) (err error) {
+	src := filepath.Join(gw.args.src, path)
+	gw.log.Printf("Parsing config %v\n", src)
+	gw.site.meta = &SiteMeta{}
+	return gw.unyaml(src, gw.site.meta)
+}
+
+func (gw *GhostWriter) parsePosts(name string) (err error) {
 	var (
 		src   = filepath.Join(gw.args.src, name)
 		fsrc  fauxfile.File
@@ -189,25 +193,34 @@ func (gw *GhostWriter) renderPosts(name string) (err error) {
 	}
 	for _, p = range names {
 		fmt.Printf("Processing %v\n", p)
+
 	}
 	return
 }
 
-type PostData struct {
+type Post struct {
 	Id   string
-	Url  url.URL
-	Time time.Time
-	Slug string
 	Body string
-	Tags []string
+	meta *PostMeta
 }
 
-type SiteData struct {
+type PostMeta struct {
+	Tags  []string
+	Title string
+	Date  string
+	Slug  string
+}
+
+type Site struct {
+	Posts map[string]*Post
+	meta  *SiteMeta
+}
+
+type SiteMeta struct {
 	Title      string
 	Root       string
 	PathFormat string
 	DateFormat string
-	Posts      map[string]*PostData
 }
 
 func main() {

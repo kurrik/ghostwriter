@@ -97,17 +97,17 @@ dateformat: "%Y-%m-%d"`
 	if err := gw.parseConfig("config.yaml"); err != nil {
 		t.Fatalf("parseConfig returned error: %v", err)
 	}
-	if gw.site.Title != "Test blog" {
-		t.Errorf("Bad title, got %v", gw.site.Title)
+	if gw.site.meta.Title != "Test blog" {
+		t.Errorf("Bad title, got %v", gw.site.meta.Title)
 	}
-	if gw.site.Root != "www.example.com" {
-		t.Errorf("Bad root, got %v", gw.site.Root)
+	if gw.site.meta.Root != "www.example.com" {
+		t.Errorf("Bad root, got %v", gw.site.meta.Root)
 	}
-	if gw.site.PathFormat != "/{{date}}/{{slug}}" {
-		t.Errorf("Bad path format, got %v", gw.site.PathFormat)
+	if gw.site.meta.PathFormat != "/{{date}}/{{slug}}" {
+		t.Errorf("Bad path format, got %v", gw.site.meta.PathFormat)
 	}
-	if gw.site.DateFormat != "%Y-%m-%d" {
-		t.Errorf("Bad date format, got %v", gw.site.DateFormat)
+	if gw.site.meta.DateFormat != "%Y-%m-%d" {
+		t.Errorf("Bad date format, got %v", gw.site.meta.DateFormat)
 	}
 }
 
