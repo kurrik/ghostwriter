@@ -88,12 +88,26 @@ func TestProcess(t *testing.T) {
 // Ensures that config files are parsed and values pulled out.
 func TestParseConfig(t *testing.T) {
 	gw, fs := Setup()
-	WriteFile(fs, "/home/test/src/config.yaml", "key: value")
+	conf := `
+title: Test blog
+root: www.example.com
+pathformat: /{{date}}/{{slug}}
+dateformat: "%Y-%m-%d"`
+	WriteFile(fs, "/home/test/src/config.yaml", conf)
 	if err := gw.parseConfig("config.yaml"); err != nil {
 		t.Fatalf("parseConfig returned error: %v", err)
 	}
-	if gw.config["key"] != "value" {
-		t.Fatalf("Unexpected config value: %v", gw.config["key"])
+	if gw.site.Title != "Test blog" {
+		t.Errorf("Bad title, got %v", gw.site.Title)
+	}
+	if gw.site.Root != "www.example.com" {
+		t.Errorf("Bad root, got %v", gw.site.Root)
+	}
+	if gw.site.PathFormat != "/{{date}}/{{slug}}" {
+		t.Errorf("Bad path format, got %v", gw.site.PathFormat)
+	}
+	if gw.site.DateFormat != "%Y-%m-%d" {
+		t.Errorf("Bad date format, got %v", gw.site.DateFormat)
 	}
 }
 
@@ -117,12 +131,10 @@ func TestFilesCopiedToBuild(t *testing.T) {
 func TestRenderContent(t *testing.T) {
 	gw, fs := Setup()
 	conf := `
-site:
-  title: Test blog
-  root: www.example.com
-fmt:
-  date: \%Y-%m-%d
-  path: /{{date}}/{{slug}}`
+title: Test blog
+root: www.example.com
+pathformat: /{{date}}/{{slug}}
+dateformat: \%Y-%m-%d`
 	body := `
 Hello World
 ===========

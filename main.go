@@ -21,8 +21,10 @@ import (
 	"io"
 	"launchpad.net/goyaml"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Args struct {
@@ -38,7 +40,7 @@ type GhostWriter struct {
 	args   *Args
 	fs     fauxfile.Filesystem
 	log    *log.Logger
-	config map[interface{}]interface{}
+	site   *SiteData
 }
 
 func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
@@ -147,7 +149,7 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 
 func (gw *GhostWriter) parseConfig(path string) (err error) {
 	var (
-		src string = filepath.Join(gw.args.src, path)
+		src  string = filepath.Join(gw.args.src, path)
 		f    fauxfile.File
 		info os.FileInfo
 		data []byte
@@ -159,14 +161,12 @@ func (gw *GhostWriter) parseConfig(path string) (err error) {
 	if info, err = f.Stat(); err != nil {
 		return
 	}
-	gw.config = make(map[interface{}]interface{})
+	gw.site = &SiteData{}
 	data = make([]byte, info.Size())
 	if _, err = f.Read(data); err != nil {
 		return
 	}
-	if err = goyaml.Unmarshal(data, gw.config); err != nil {
-		return
-	}
+	err = goyaml.Unmarshal(data, gw.site)
 	return
 }
 
@@ -191,6 +191,23 @@ func (gw *GhostWriter) renderPosts(name string) (err error) {
 		fmt.Printf("Processing %v\n", p)
 	}
 	return
+}
+
+type PostData struct {
+	Id   string
+	Url  url.URL
+	Time time.Time
+	Slug string
+	Body string
+	Tags []string
+}
+
+type SiteData struct {
+	Title      string
+	Root       string
+	PathFormat string
+	DateFormat string
+	Posts      map[string]*PostData
 }
 
 func main() {
