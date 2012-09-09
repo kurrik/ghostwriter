@@ -46,13 +46,15 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 		args: args,
 		fs:   fs,
 		log:  log.New(os.Stderr, "", log.LstdFlags),
-		site: &Site{},
+		site: &Site{
+			Posts: make(map[string]*Post),
+		},
 	}
 	return gw
 }
 
 func (gw *GhostWriter) Process() (err error) {
-	if err = gw.parseConfig("config.yaml"); err != nil {
+	if err = gw.parseSiteMeta("config.yaml"); err != nil {
 		return
 	}
 	if err = gw.copyStatic("static"); err != nil {
@@ -146,11 +148,19 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 	return
 }
 
-func (gw *GhostWriter) parseConfig(path string) (err error) {
+func (gw *GhostWriter) parseSiteMeta(path string) (err error) {
 	src := filepath.Join(gw.args.src, path)
-	gw.log.Printf("Parsing config %v\n", src)
+	gw.log.Printf("Parsing site meta %v\n", src)
 	gw.site.meta = &SiteMeta{}
 	return gw.unyaml(src, gw.site.meta)
+}
+
+func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
+	src := filepath.Join(gw.args.src, path)
+	gw.log.Printf("Parsing site meta %v\n", src)
+	meta = &PostMeta{}
+	err = gw.unyaml(src, meta)
+	return
 }
 
 func (gw *GhostWriter) parsePosts(name string) (err error) {
@@ -158,7 +168,10 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 		src   = filepath.Join(gw.args.src, name)
 		fsrc  fauxfile.File
 		names []string
-		p     string
+		id     string
+		post  *Post
+		msrc  string
+		ok    bool
 	)
 	if fsrc, err = gw.fs.Open(src); err != nil {
 		gw.log.Printf("Posts directory not found %v\n", src)
@@ -170,8 +183,18 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 	if err != nil {
 		return
 	}
-	for _, p = range names {
-		fmt.Printf("Processing %v\n", p)
+	for _, id = range names {
+		msrc = filepath.Join(src, id, "meta.yaml")
+		fmt.Printf("Processing %v\n", msrc)
+		if post, ok = gw.site.Posts[id]; ok == false {
+			post = &Post{
+				Id: id,
+			}
+			gw.site.Posts[id] = post
+		}
+		if post.meta, err = gw.parsePostMeta(msrc); err != nil {
+			return
+		}
 	}
 	return
 }

@@ -86,7 +86,7 @@ func TestProcess(t *testing.T) {
 }
 
 // Ensures that config files are parsed and values pulled out.
-func TestParseConfig(t *testing.T) {
+func TestParseSiteMeta(t *testing.T) {
 	gw, fs := Setup()
 	conf := `
 title: Test blog
@@ -94,7 +94,7 @@ root: www.example.com
 pathformat: /{{date}}/{{slug}}
 dateformat: "%Y-%m-%d"`
 	WriteFile(fs, "/home/test/src/config.yaml", conf)
-	if err := gw.parseConfig("config.yaml"); err != nil {
+	if err := gw.parseSiteMeta("config.yaml"); err != nil {
 		t.Fatalf("parseConfig returned error: %v", err)
 	}
 	if gw.site.meta.Title != "Test blog" {
