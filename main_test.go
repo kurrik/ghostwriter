@@ -80,7 +80,6 @@ func ReadFile(fs fauxfile.Filesystem, path string) (data string, err error) {
 func TestProcess(t *testing.T) {
 	gw, fs := Setup()
 	WriteFile(fs, "/home/test/src/config.yaml", "")
-	fs.MkdirAll("/home/test/src/static", 0755)
 	if err := gw.Process(); err != nil {
 		t.Fatalf("Process returned error: %v", err)
 	}
@@ -122,7 +121,7 @@ site:
   title: Test blog
   root: www.example.com
 fmt:
-  date: %Y-%m-%d
+  date: \%Y-%m-%d
   path: /{{date}}/{{slug}}`
 	body := `
 Hello World
@@ -161,12 +160,17 @@ tags:
   </body>
 </html>`
 	WriteFile(fs, "src/config.yaml", conf)
-	WriteFile(fs, "src/templates/post.mustache", tmpl)
+	WriteFile(fs, "src/templates/post.tmpl", tmpl)
 	WriteFile(fs, "src/posts/01-test/body.md", body)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", meta)
-	gw.Process()
-	out, err := ReadFile(fs, "build/2012-09-07/hello-world")
-	if err != nil {
+	var (
+		err error
+		out string
+	)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out, err = ReadFile(fs, "build/2012-09-07/hello-world"); err != nil {
 		t.Fatalf("Error: %v", err)
 	}
 	if out != html {

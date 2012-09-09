@@ -57,80 +57,89 @@ func (gw *GhostWriter) Process() (err error) {
 	if err = gw.copyStatic("static"); err != nil {
 		return
 	}
+	if err = gw.renderPosts("posts"); err != nil {
+		return
+	}
 	return
 }
 
-func (gw *GhostWriter) copyStatic(path string) (err error) {
+func (gw *GhostWriter) copyStatic(name string) (err error) {
 	var (
 		queue []string
 		names []string
 		p     string
 		n     string
-		s     string
-		d     string
+		src   string
+		dst   string
 		x     int
 		i     os.FileInfo
-		f     fauxfile.File
-		f2    fauxfile.File
+		fsrc  fauxfile.File
+		fdst  fauxfile.File
 		b     []byte
 		c     int
 	)
-	queue = []string{path}
+	queue = []string{name}
 	for len(queue) > 0 {
 		p = queue[0]
 		queue = queue[1:]
-		s = filepath.Join(gw.args.src, p)
-		d = filepath.Join(gw.args.dst, p)
-		if i, err = gw.fs.Stat(s); err != nil {
+		src = filepath.Join(gw.args.src, p)
+		dst = filepath.Join(gw.args.dst, p)
+		if i, err = gw.fs.Stat(src); err != nil {
+			if name == p {
+				gw.log.Printf("Static dir not found %v\n", src)
+				// Fail silently
+				return nil
+			}
 			return
 		}
 		if i.IsDir() {
-			if f, err = gw.fs.Open(s); err != nil {
+			if fsrc, err = gw.fs.Open(src); err != nil {
 				return
 			}
-			if names, err = f.Readdirnames(-1); err != nil {
+			if names, err = fsrc.Readdirnames(-1); err != nil {
 				return
 			}
-			f.Close()
+			fsrc.Close()
 			for x, n = range names {
 				names[x] = filepath.Join(p, n)
 			}
 			queue = append(queue, names...)
-			gw.log.Printf("Creating %v\n", d)
-			if err = gw.fs.Mkdir(d, i.Mode()); err != nil {
-				gw.log.Printf("Problem creating %v\n", d)
+			gw.log.Printf("Creating %v\n", dst)
+			if err = gw.fs.Mkdir(dst, i.Mode()); err != nil {
+				gw.log.Printf("Problem creating %v\n", dst)
 				return
 			}
 		} else {
-			gw.log.Printf("Copying %v to %v\n", s, d)
-			if f, err = gw.fs.Create(d); err != nil {
+			gw.log.Printf("Copying %v to %v\n", src, dst)
+			if fdst, err = gw.fs.Create(dst); err != nil {
 				return
 			}
-			f.Chmod(i.Mode())
-			if f2, err = gw.fs.Open(s); err != nil {
+			fdst.Chmod(i.Mode())
+			if fsrc, err = gw.fs.Open(src); err != nil {
+				fdst.Close()
 				return
 			}
 			b = make([]byte, 10*1024) // 10Kb
 			for {
-				c, err = f2.Read(b)
+				c, err = fsrc.Read(b)
 				if err == io.EOF {
+					err = nil
 					break
 				}
 				if err != nil {
-					f.Close()
-					f2.Close()
-					return
+					break
 				}
 				b = b[:c]
-				c, err = f.Write(b)
+				c, err = fdst.Write(b)
 				if err != nil {
-					f.Close()
-					f2.Close()
-					return
+					break
 				}
 			}
-			f.Close()
-			f2.Close()
+			fsrc.Close()
+			fdst.Close()
+			if err != nil {
+				return
+			}
 		}
 	}
 	return
@@ -138,7 +147,7 @@ func (gw *GhostWriter) copyStatic(path string) (err error) {
 
 func (gw *GhostWriter) parseConfig(path string) (err error) {
 	var (
-		src  = filepath.Join(gw.args.src, path)
+		src string = filepath.Join(gw.args.src, path)
 		f    fauxfile.File
 		info os.FileInfo
 		data []byte
@@ -157,6 +166,29 @@ func (gw *GhostWriter) parseConfig(path string) (err error) {
 	}
 	if err = goyaml.Unmarshal(data, gw.config); err != nil {
 		return
+	}
+	return
+}
+
+func (gw *GhostWriter) renderPosts(name string) (err error) {
+	var (
+		src   = filepath.Join(gw.args.src, name)
+		fsrc  fauxfile.File
+		names []string
+		p     string
+	)
+	if fsrc, err = gw.fs.Open(src); err != nil {
+		gw.log.Printf("Posts directory not found %v\n", src)
+		// Fail silently
+		return nil
+	}
+	names, err = fsrc.Readdirnames(-1)
+	fsrc.Close()
+	if err != nil {
+		return
+	}
+	for _, p = range names {
+		fmt.Printf("Processing %v\n", p)
 	}
 	return
 }
