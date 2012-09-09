@@ -77,7 +77,7 @@ func ReadFile(fs fauxfile.Filesystem, path string) (data string, err error) {
 	return
 }
 
-SITE_META = `
+const SITE_META = `
 title: Test blog
 root: www.example.com
 pathformat: /{{date}}/{{slug}}
@@ -104,7 +104,7 @@ func TestParseSiteMeta(t *testing.T) {
 	}
 }
 
-POST_META = `
+const POST_META = `
 date: 2012-09-07
 slug: hello-world
 title: Hello World!
