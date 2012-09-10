@@ -79,9 +79,9 @@ func ReadFile(fs fauxfile.Filesystem, path string) (data string, err error) {
 
 const SITE_META = `
 title: Test blog
-root: www.example.com
-pathformat: /{{date}}/{{slug}}
-dateformat: "%Y-%m-%d"`
+root: http://www.example.com
+pathformat: /{{.DatePath}}/{{.Slug}}
+dateformat: "2006-01-02"`
 
 // Ensures that config files are parsed and values pulled out.
 func TestParseSiteMeta(t *testing.T) {
@@ -93,13 +93,13 @@ func TestParseSiteMeta(t *testing.T) {
 	if gw.site.meta.Title != "Test blog" {
 		t.Errorf("Bad title, got %v", gw.site.meta.Title)
 	}
-	if gw.site.meta.Root != "www.example.com" {
+	if gw.site.meta.Root != "http://www.example.com" {
 		t.Errorf("Bad root, got %v", gw.site.meta.Root)
 	}
-	if gw.site.meta.PathFormat != "/{{date}}/{{slug}}" {
+	if gw.site.meta.PathFormat != "/{{.DatePath}}/{{.Slug}}" {
 		t.Errorf("Bad path format, got %v", gw.site.meta.PathFormat)
 	}
-	if gw.site.meta.DateFormat != "%Y-%m-%d" {
+	if gw.site.meta.DateFormat != "2006-01-02" {
 		t.Errorf("Bad date format, got %v", gw.site.meta.DateFormat)
 	}
 }

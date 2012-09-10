@@ -15,14 +15,20 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/kurrik/fauxfile"
 	"io"
 	"launchpad.net/goyaml"
 	"log"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
+	"text/template"
+	"time"
 )
 
 type Args struct {
@@ -168,7 +174,7 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 		src   = filepath.Join(gw.args.src, name)
 		fsrc  fauxfile.File
 		names []string
-		id     string
+		id    string
 		post  *Post
 		msrc  string
 		ok    bool
@@ -184,16 +190,28 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 		return
 	}
 	for _, id = range names {
-		msrc = filepath.Join(src, id, "meta.yaml")
-		fmt.Printf("Processing %v\n", msrc)
+		msrc = filepath.Join(name, id, "meta.yaml")
 		if post, ok = gw.site.Posts[id]; ok == false {
 			post = &Post{
-				Id: id,
+				Id:   id,
+				site: gw.site,
 			}
 			gw.site.Posts[id] = post
 		}
 		if post.meta, err = gw.parsePostMeta(msrc); err != nil {
+			fmt.Printf("err: %v\n", err)
 			return
+		}
+		// Debugging for now
+		if date, err := post.Date(); err == nil {
+			fmt.Printf("Date: %v\n", date)
+		} else {
+			fmt.Printf("Err: %v\n", err)
+		}
+		if path, err := post.Path(); err == nil {
+			fmt.Printf("Path: %v\n", path)
+		} else {
+			fmt.Printf("Err: %v\n", err)
 		}
 	}
 	return
@@ -224,6 +242,46 @@ type Post struct {
 	Id   string
 	Body string
 	meta *PostMeta
+	site *Site
+}
+
+func (p *Post) Date() (t time.Time, err error) {
+	return time.Parse(p.site.meta.DateFormat, p.meta.Date)
+}
+
+func (p *Post) DatePath() (s string) {
+	var t time.Time
+	t, _ = p.Date() // T should zero value if error
+	return t.Format(p.site.meta.DateFormat)
+}
+
+func (p *Post) Slug() (s string) {
+	s = strings.ToLower(p.meta.Slug)
+	return
+}
+
+func (p *Post) Path() (out string, err error) {
+	var (
+		t *template.Template
+		b *bytes.Buffer
+	)
+	if t, err = p.site.PathTemplate(); err != nil {
+		return
+	}
+	b = bytes.NewBufferString("")
+	if err = t.Execute(b, p); err != nil {
+		return
+	}
+	out = b.String()
+	return
+}
+
+func (p *Post) URL() (u *url.URL, err error) {
+	var postpath string
+	if postpath, err = p.Path(); err != nil {
+		return
+	}
+	return url.Parse(path.Join(p.site.meta.Root, postpath))
 }
 
 type PostMeta struct {
@@ -234,8 +292,20 @@ type PostMeta struct {
 }
 
 type Site struct {
-	Posts map[string]*Post
-	meta  *SiteMeta
+	Posts        map[string]*Post
+	meta         *SiteMeta
+	pathTemplate *template.Template
+}
+
+func (s *Site) PathTemplate() (t *template.Template, err error) {
+	if s.pathTemplate == nil {
+		s.pathTemplate, err = template.New("path").Parse(s.meta.PathFormat)
+		if err != nil {
+			return
+		}
+	}
+	t = s.pathTemplate
+	return
 }
 
 type SiteMeta struct {
