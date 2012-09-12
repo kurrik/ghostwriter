@@ -12,4 +12,5 @@ Installing
 Run:
 
     go get launchpad.net/goyaml
+    go get github.com/knieriem/markdown
     go get github.com/kurrik/fauxfile
