@@ -164,11 +164,11 @@ This is markdown
 	tmpl := `<!DOCTYPE html>
 <html>
   <head>
-    <title>{{site.title}} - {{post.slug}}</title>
-    <link rel="canonical" href="{{post.permalink}}" />
+    <title>{{.Site.Title}} - {{.Post.Title}}</title>
+    <link rel="canonical" href="{{.Post.Permalink}}" />
   </head>
   <body>
-    {{post.body}}
+{{.Post.Body}}
   </body>
 </html>`
 	html := `<!DOCTYPE html>
@@ -178,9 +178,12 @@ This is markdown
     <link rel="canonical" href="http://www.example.com/2012-09-07/hello-world" />
   </head>
   <body>
-    <h1>Hello World</h1>
-    <p>This is a fake post, for testing.</p>
-    <h2>This is markdown</h2>
+<h1>Hello World</h1>
+
+<p>This is a fake post, for testing.</p>
+
+<h2>This is markdown</h2>
+
   </body>
 </html>`
 	WriteFile(fs, "src/config.yaml", SITE_META)

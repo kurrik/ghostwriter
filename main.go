@@ -15,9 +15,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
+	"github.com/knieriem/markdown"
 	"github.com/kurrik/fauxfile"
 	"io"
 	"launchpad.net/goyaml"
@@ -41,10 +43,11 @@ type Configuration struct {
 }
 
 type GhostWriter struct {
-	args *Args
-	fs   fauxfile.Filesystem
-	log  *log.Logger
-	site *Site
+	args      *Args
+	fs        fauxfile.Filesystem
+	log       *log.Logger
+	site      *Site
+	templates map[string]*template.Template
 }
 
 func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
@@ -64,6 +67,9 @@ func (gw *GhostWriter) Process() (err error) {
 		return
 	}
 	if err = gw.copyStatic("static"); err != nil {
+		return
+	}
+	if err = gw.parseTemplates("templates"); err != nil {
 		return
 	}
 	if err = gw.parsePosts("posts"); err != nil {
@@ -154,6 +160,53 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 	return
 }
 
+func (gw *GhostWriter) parseTemplates(path string) (err error) {
+	var (
+		src   = filepath.Join(gw.args.src, path)
+		fsrc  fauxfile.File
+		fi    os.FileInfo
+		names []string
+		name  string
+		id    string
+		buf   []byte
+	)
+	gw.templates = make(map[string]*template.Template)
+	if fsrc, err = gw.fs.Open(src); err != nil {
+		gw.log.Printf("Templates directory not found %v\n", src)
+		// Fail silently
+		return nil
+	}
+	names, err = fsrc.Readdirnames(-1)
+	fsrc.Close()
+	if err != nil {
+		return
+	}
+	for _, name = range names {
+		if fsrc, err = gw.fs.Open(filepath.Join(src, name)); err != nil {
+			return
+		}
+		if fi, err = fsrc.Stat(); err != nil {
+			fsrc.Close()
+			return
+		}
+		buf = make([]byte, fi.Size())
+		if _, err = fsrc.Read(buf); err != nil {
+			if err != io.EOF {
+				fsrc.Close()
+				return
+			}
+			err = nil
+		}
+		fsrc.Close()
+		id = strings.Replace(name, filepath.Ext(name), "", -1)
+		gw.templates[id], err = template.New(id).Parse(string(buf))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (gw *GhostWriter) parseSiteMeta(path string) (err error) {
 	src := filepath.Join(gw.args.src, path)
 	gw.log.Printf("Parsing site meta %v\n", src)
@@ -199,19 +252,46 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 			gw.site.Posts[id] = post
 		}
 		if post.meta, err = gw.parsePostMeta(msrc); err != nil {
-			fmt.Printf("err: %v\n", err)
 			return
 		}
-		// Debugging for now
-		if date, err := post.Date(); err == nil {
-			fmt.Printf("Date: %v\n", date)
-		} else {
-			fmt.Printf("Err: %v\n", err)
+	}
+	var (
+		srcfile  fauxfile.File
+		dstfile  fauxfile.File
+		srcpath  string
+		dstpath  string
+		postpath string
+		writer   *bufio.Writer
+		parser   = markdown.NewParser(&markdown.Extensions{Smart: true})
+	)
+	for id, post = range gw.site.Posts {
+		if postpath, err = post.Path(); err != nil {
+			return err
 		}
-		if path, err := post.Path(); err == nil {
-			fmt.Printf("Path: %v\n", path)
-		} else {
-			fmt.Printf("Err: %v\n", err)
+		srcpath = filepath.Join(src, id, "body.md")
+		dstpath = path.Join(gw.args.dst, postpath)
+		if srcfile, err = gw.fs.Open(srcpath); err != nil {
+			return err
+		}
+		gw.fs.MkdirAll(path.Dir(dstpath), 0755)
+		if dstfile, err = gw.fs.Create(dstpath); err != nil {
+			return err
+		}
+		body := bytes.NewBufferString("")
+		parser.Markdown(srcfile, markdown.ToHTML(body))
+		post.Body = body.String()
+		t := gw.templates["post"]
+		writer = bufio.NewWriter(dstfile)
+		data := map[string]interface{}{
+			"Post": post,
+			"Site": gw.site,
+		}
+		err = t.Execute(writer, data)
+		writer.Flush()
+		srcfile.Close()
+		dstfile.Close()
+		if err != nil {
+			return err
 		}
 	}
 	return
@@ -260,6 +340,11 @@ func (p *Post) Slug() (s string) {
 	return
 }
 
+func (p *Post) Title() (s string) {
+	s = p.meta.Title
+	return
+}
+
 func (p *Post) Path() (out string, err error) {
 	var (
 		t *template.Template
@@ -273,6 +358,12 @@ func (p *Post) Path() (out string, err error) {
 		return
 	}
 	out = b.String()
+	return
+}
+
+func (p *Post) Permalink() (s string) {
+	path, _ := p.Path()
+	s = fmt.Sprintf("%v%v", p.site.Root(), path)
 	return
 }
 
@@ -295,6 +386,14 @@ type Site struct {
 	Posts        map[string]*Post
 	meta         *SiteMeta
 	pathTemplate *template.Template
+}
+
+func (s *Site) Title() string {
+	return s.meta.Title
+}
+
+func (s *Site) Root() string {
+	return s.meta.Root
 }
 
 func (s *Site) PathTemplate() (t *template.Template, err error) {
