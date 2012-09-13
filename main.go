@@ -183,7 +183,7 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 		if post, ok = gw.site.Posts[id]; ok == false {
 			post = &Post{
 				Id:     id,
-				SrcDir: filepath.Join(src, name, id),
+				SrcDir: filepath.Join(src, id),
 				site:   gw.site,
 			}
 			gw.site.Posts[id] = post
