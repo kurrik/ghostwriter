@@ -33,15 +33,13 @@ import (
 	"time"
 )
 
+// Arguments, passed to the main executable.
 type Args struct {
 	src string
 	dst string
 }
 
-type Configuration struct {
-	fs fauxfile.Filesystem
-}
-
+// Master Control Program.
 type GhostWriter struct {
 	args      *Args
 	fs        fauxfile.Filesystem
@@ -50,6 +48,7 @@ type GhostWriter struct {
 	templates map[string]*template.Template
 }
 
+// Creates a new GhostWriter.
 func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 	gw := &GhostWriter{
 		args: args,
@@ -62,6 +61,7 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 	return gw
 }
 
+// Parses the src directory, rendering into dst as needed.
 func (gw *GhostWriter) Process() (err error) {
 	if err = gw.parseSiteMeta("config.yaml"); err != nil {
 		return
@@ -78,6 +78,8 @@ func (gw *GhostWriter) Process() (err error) {
 	return
 }
 
+// Copies the file at path src to path dst.
+// Returns the number of bytes written or an error if it occurred.
 func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 	var (
 		fdst fauxfile.File
@@ -100,6 +102,8 @@ func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 	return
 }
 
+// Copies content from a static directory to the destination.
+// Returns a non-nil error if something went wrong.
 func (gw *GhostWriter) copyStatic(name string) (err error) {
 	var (
 		queue []string
@@ -118,6 +122,7 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 		src = filepath.Join(gw.args.src, p)
 		dst = filepath.Join(gw.args.dst, p)
 		if i, err = gw.fs.Stat(src); err != nil {
+			// Passed in path
 			if name == p {
 				gw.log.Printf("Static dir not found %v\n", src)
 				// Fail silently
@@ -148,6 +153,8 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 	return
 }
 
+// Parses a post meta file at the given path.
+// Returns a pointer to a populated PostMeta object or an error if it failed.
 func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
 	src := filepath.Join(gw.args.src, path)
 	gw.log.Printf("Parsing site meta %v\n", src)
@@ -156,6 +163,7 @@ func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
 	return
 }
 
+// Parses posts under the supplied path and populates gw.site.Posts.
 func (gw *GhostWriter) parsePosts(name string) (err error) {
 	var (
 		src   = filepath.Join(gw.args.src, name)
@@ -174,8 +182,9 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 		msrc = filepath.Join(name, id, "meta.yaml")
 		if post, ok = gw.site.Posts[id]; ok == false {
 			post = &Post{
-				Id:   id,
-				site: gw.site,
+				Id:     id,
+				SrcDir: filepath.Join(src, name, id),
+				site:   gw.site,
 			}
 			gw.site.Posts[id] = post
 		}
@@ -184,13 +193,14 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 		}
 	}
 	for id, post = range gw.site.Posts {
-		if err = gw.renderPost(post, src); err != nil {
+		if err = gw.renderPost(post); err != nil {
 			return err
 		}
 	}
 	return
 }
 
+// Parses general site configuration from the source directory.
 func (gw *GhostWriter) parseSiteMeta(path string) (err error) {
 	src := filepath.Join(gw.args.src, path)
 	gw.log.Printf("Parsing site meta %v\n", src)
@@ -198,6 +208,7 @@ func (gw *GhostWriter) parseSiteMeta(path string) (err error) {
 	return gw.unyaml(src, gw.site.meta)
 }
 
+// Parses templates from the given template directory.
 func (gw *GhostWriter) parseTemplates(path string) (err error) {
 	var (
 		src   = filepath.Join(gw.args.src, path)
@@ -225,6 +236,7 @@ func (gw *GhostWriter) parseTemplates(path string) (err error) {
 	return nil
 }
 
+// Reads directory contents from the given path and returns file names.
 func (gw *GhostWriter) readDir(path string) (names []string, err error) {
 	var f fauxfile.File
 	if f, err = gw.fs.Open(path); err != nil {
@@ -235,6 +247,7 @@ func (gw *GhostWriter) readDir(path string) (names []string, err error) {
 	return
 }
 
+// Reads a file from the given path and returns a string of the contents.
 func (gw *GhostWriter) readFile(path string) (out string, err error) {
 	var (
 		f   fauxfile.File
@@ -259,7 +272,8 @@ func (gw *GhostWriter) readFile(path string) (out string, err error) {
 	return
 }
 
-func (gw *GhostWriter) renderPost(post *Post, srcdir string) (err error) {
+// Renders the initalized Post object into an HTML file in the destination.
+func (gw *GhostWriter) renderPost(post *Post) (err error) {
 	var (
 		fsrc     fauxfile.File
 		fdst     fauxfile.File
@@ -273,7 +287,7 @@ func (gw *GhostWriter) renderPost(post *Post, srcdir string) (err error) {
 	if postpath, err = post.Path(); err != nil {
 		return
 	}
-	src = filepath.Join(srcdir, post.Id, "body.md")
+	src = filepath.Join(post.SrcDir, "body.md")
 	dst = path.Join(gw.args.dst, postpath)
 	if fsrc, err = gw.fs.Open(src); err != nil {
 		return
@@ -298,6 +312,7 @@ func (gw *GhostWriter) renderPost(post *Post, srcdir string) (err error) {
 	return
 }
 
+// Deserializes the yaml file at the given path to the supplied object.
 func (gw *GhostWriter) unyaml(path string, out interface{}) (err error) {
 	var (
 		file fauxfile.File
@@ -319,33 +334,40 @@ func (gw *GhostWriter) unyaml(path string, out interface{}) (err error) {
 	return
 }
 
+// Represents a post for templating purposes.
 type Post struct {
-	Id   string
-	Body string
-	meta *PostMeta
-	site *Site
+	Id     string
+	Body   string
+	SrcDir string
+	meta   *PostMeta
+	site   *Site
 }
 
+// Returns the date of the post, as configured in the post metadata.
 func (p *Post) Date() (t time.Time, err error) {
 	return time.Parse(p.site.meta.DateFormat, p.meta.Date)
 }
 
+// Returns the date of the post in the configured path format.
 func (p *Post) DatePath() (s string) {
 	var t time.Time
 	t, _ = p.Date() // T should zero value if error
 	return t.Format(p.site.meta.DateFormat)
 }
 
+// Returns the URL-friendly identifier for the post.
 func (p *Post) Slug() (s string) {
 	s = strings.ToLower(p.meta.Slug)
 	return
 }
 
+// Returns the human-friendly title of the post.
 func (p *Post) Title() (s string) {
 	s = p.meta.Title
 	return
 }
 
+// Returns the relative URL path for the post.
 func (p *Post) Path() (out string, err error) {
 	var (
 		t *template.Template
@@ -362,12 +384,14 @@ func (p *Post) Path() (out string, err error) {
 	return
 }
 
+// Returns the fully-qualified link for the post.
 func (p *Post) Permalink() (s string) {
 	path, _ := p.Path()
 	s = fmt.Sprintf("%v%v", p.site.Root(), path)
 	return
 }
 
+// Returns the fully-qualified link for the post as a url.URL object.
 func (p *Post) URL() (u *url.URL, err error) {
 	var postpath string
 	if postpath, err = p.Path(); err != nil {
@@ -376,6 +400,7 @@ func (p *Post) URL() (u *url.URL, err error) {
 	return url.Parse(path.Join(p.site.meta.Root, postpath))
 }
 
+// Serializable metadata about the post.
 type PostMeta struct {
 	Tags  []string
 	Title string
@@ -383,20 +408,24 @@ type PostMeta struct {
 	Slug  string
 }
 
+// Represents the site for templating purposes.
 type Site struct {
 	Posts        map[string]*Post
 	meta         *SiteMeta
 	pathTemplate *template.Template
 }
 
+// Returns the title of the site.
 func (s *Site) Title() string {
 	return s.meta.Title
 }
 
+// Returns the root of the site's URL.
 func (s *Site) Root() string {
 	return s.meta.Root
 }
 
+// Returns a template suitable for rendering post URLs.
 func (s *Site) PathTemplate() (t *template.Template, err error) {
 	if s.pathTemplate == nil {
 		s.pathTemplate, err = template.New("path").Parse(s.meta.PathFormat)
@@ -408,6 +437,7 @@ func (s *Site) PathTemplate() (t *template.Template, err error) {
 	return
 }
 
+// Serializable metadata about the site.
 type SiteMeta struct {
 	Title      string
 	Root       string
@@ -415,6 +445,7 @@ type SiteMeta struct {
 	DateFormat string
 }
 
+// Main routine.
 func main() {
 	a := &Args{}
 	flag.StringVar(&a.src, "src", "src", "Path to src files.")
