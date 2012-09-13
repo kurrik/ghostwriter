@@ -78,6 +78,28 @@ func (gw *GhostWriter) Process() (err error) {
 	return
 }
 
+func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
+	var (
+		fdst fauxfile.File
+		fsrc fauxfile.File
+		fi   os.FileInfo
+	)
+	if fsrc, err = gw.fs.Open(src); err != nil {
+		return
+	}
+	defer fsrc.Close()
+	if fdst, err = gw.fs.Create(dst); err != nil {
+		return
+	}
+	defer fdst.Close()
+	if fi, err = fsrc.Stat(); err != nil {
+		return
+	}
+	fdst.Chmod(fi.Mode())
+	_, err = io.Copy(fdst, fsrc)
+	return
+}
+
 func (gw *GhostWriter) copyStatic(name string) (err error) {
 	var (
 		queue []string
@@ -88,10 +110,6 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 		dst   string
 		x     int
 		i     os.FileInfo
-		fsrc  fauxfile.File
-		fdst  fauxfile.File
-		b     []byte
-		c     int
 	)
 	queue = []string{name}
 	for len(queue) > 0 {
@@ -108,13 +126,9 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 			return
 		}
 		if i.IsDir() {
-			if fsrc, err = gw.fs.Open(src); err != nil {
+			if names, err = gw.readDir(src); err != nil {
 				return
 			}
-			if names, err = fsrc.Readdirnames(-1); err != nil {
-				return
-			}
-			fsrc.Close()
 			for x, n = range names {
 				names[x] = filepath.Join(p, n)
 			}
@@ -126,92 +140,12 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 			}
 		} else {
 			gw.log.Printf("Copying %v to %v\n", src, dst)
-			if fdst, err = gw.fs.Create(dst); err != nil {
-				return
-			}
-			fdst.Chmod(i.Mode())
-			if fsrc, err = gw.fs.Open(src); err != nil {
-				fdst.Close()
-				return
-			}
-			b = make([]byte, 10*1024) // 10Kb
-			for {
-				c, err = fsrc.Read(b)
-				if err == io.EOF {
-					err = nil
-					break
-				}
-				if err != nil {
-					break
-				}
-				b = b[:c]
-				c, err = fdst.Write(b)
-				if err != nil {
-					break
-				}
-			}
-			fsrc.Close()
-			fdst.Close()
-			if err != nil {
+			if _, err = gw.copyFile(src, dst); err != nil {
 				return
 			}
 		}
 	}
 	return
-}
-
-func (gw *GhostWriter) parseTemplates(path string) (err error) {
-	var (
-		src   = filepath.Join(gw.args.src, path)
-		fsrc  fauxfile.File
-		fi    os.FileInfo
-		names []string
-		name  string
-		id    string
-		buf   []byte
-	)
-	gw.templates = make(map[string]*template.Template)
-	if fsrc, err = gw.fs.Open(src); err != nil {
-		gw.log.Printf("Templates directory not found %v\n", src)
-		// Fail silently
-		return nil
-	}
-	names, err = fsrc.Readdirnames(-1)
-	fsrc.Close()
-	if err != nil {
-		return
-	}
-	for _, name = range names {
-		if fsrc, err = gw.fs.Open(filepath.Join(src, name)); err != nil {
-			return
-		}
-		if fi, err = fsrc.Stat(); err != nil {
-			fsrc.Close()
-			return
-		}
-		buf = make([]byte, fi.Size())
-		if _, err = fsrc.Read(buf); err != nil {
-			if err != io.EOF {
-				fsrc.Close()
-				return
-			}
-			err = nil
-		}
-		fsrc.Close()
-		id = strings.Replace(name, filepath.Ext(name), "", -1)
-		gw.templates[id], err = template.New(id).Parse(string(buf))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (gw *GhostWriter) parseSiteMeta(path string) (err error) {
-	src := filepath.Join(gw.args.src, path)
-	gw.log.Printf("Parsing site meta %v\n", src)
-	gw.site.meta = &SiteMeta{}
-	return gw.unyaml(src, gw.site.meta)
 }
 
 func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
@@ -225,22 +159,16 @@ func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
 func (gw *GhostWriter) parsePosts(name string) (err error) {
 	var (
 		src   = filepath.Join(gw.args.src, name)
-		fsrc  fauxfile.File
 		names []string
 		id    string
 		post  *Post
 		msrc  string
 		ok    bool
 	)
-	if fsrc, err = gw.fs.Open(src); err != nil {
+	if names, err = gw.readDir(src); err != nil {
 		gw.log.Printf("Posts directory not found %v\n", src)
 		// Fail silently
 		return nil
-	}
-	names, err = fsrc.Readdirnames(-1)
-	fsrc.Close()
-	if err != nil {
-		return
 	}
 	for _, id = range names {
 		msrc = filepath.Join(name, id, "meta.yaml")
@@ -294,6 +222,74 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 			return err
 		}
 	}
+	return
+}
+
+func (gw *GhostWriter) parseSiteMeta(path string) (err error) {
+	src := filepath.Join(gw.args.src, path)
+	gw.log.Printf("Parsing site meta %v\n", src)
+	gw.site.meta = &SiteMeta{}
+	return gw.unyaml(src, gw.site.meta)
+}
+
+func (gw *GhostWriter) parseTemplates(path string) (err error) {
+	var (
+		src   = filepath.Join(gw.args.src, path)
+		names []string
+		id    string
+		text  string
+		tmpl  *template.Template
+	)
+	gw.templates = make(map[string]*template.Template)
+	if names, err = gw.readDir(src); err != nil {
+		gw.log.Printf("Templates directory not found %v\n", src)
+		// Fail silently
+		return nil
+	}
+	for _, n := range names {
+		if text, err = gw.readFile(filepath.Join(src, n)); err != nil {
+			return
+		}
+		if tmpl, err = template.New(id).Parse(text); err != nil {
+			return
+		}
+		id = strings.Replace(n, filepath.Ext(n), "", -1)
+		gw.templates[id] = tmpl
+	}
+	return nil
+}
+
+func (gw *GhostWriter) readDir(path string) (names []string, err error) {
+	var f fauxfile.File
+	if f, err = gw.fs.Open(path); err != nil {
+		return
+	}
+	defer f.Close()
+	names, err = f.Readdirnames(-1)
+	return
+}
+
+func (gw *GhostWriter) readFile(path string) (out string, err error) {
+	var (
+		f   fauxfile.File
+		fi  os.FileInfo
+		buf []byte
+	)
+	if f, err = gw.fs.Open(path); err != nil {
+		return
+	}
+	defer f.Close()
+	if fi, err = f.Stat(); err != nil {
+		return
+	}
+	buf = make([]byte, fi.Size())
+	if _, err = f.Read(buf); err != nil {
+		if err != io.EOF {
+			return
+		}
+		err = nil
+	}
+	out = string(buf)
 	return
 }
 
