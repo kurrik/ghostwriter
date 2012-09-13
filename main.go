@@ -183,42 +183,8 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 			return
 		}
 	}
-	var (
-		srcfile  fauxfile.File
-		dstfile  fauxfile.File
-		srcpath  string
-		dstpath  string
-		postpath string
-		writer   *bufio.Writer
-		parser   = markdown.NewParser(&markdown.Extensions{Smart: true})
-	)
 	for id, post = range gw.site.Posts {
-		if postpath, err = post.Path(); err != nil {
-			return err
-		}
-		srcpath = filepath.Join(src, id, "body.md")
-		dstpath = path.Join(gw.args.dst, postpath)
-		if srcfile, err = gw.fs.Open(srcpath); err != nil {
-			return err
-		}
-		gw.fs.MkdirAll(path.Dir(dstpath), 0755)
-		if dstfile, err = gw.fs.Create(dstpath); err != nil {
-			return err
-		}
-		body := bytes.NewBufferString("")
-		parser.Markdown(srcfile, markdown.ToHTML(body))
-		post.Body = body.String()
-		t := gw.templates["post"]
-		writer = bufio.NewWriter(dstfile)
-		data := map[string]interface{}{
-			"Post": post,
-			"Site": gw.site,
-		}
-		err = t.Execute(writer, data)
-		writer.Flush()
-		srcfile.Close()
-		dstfile.Close()
-		if err != nil {
+		if err = gw.renderPost(post, src); err != nil {
 			return err
 		}
 	}
@@ -290,6 +256,45 @@ func (gw *GhostWriter) readFile(path string) (out string, err error) {
 		err = nil
 	}
 	out = string(buf)
+	return
+}
+
+func (gw *GhostWriter) renderPost(post *Post, srcdir string) (err error) {
+	var (
+		fsrc     fauxfile.File
+		fdst     fauxfile.File
+		src      string
+		dst      string
+		postpath string
+		body     *bytes.Buffer
+		writer   *bufio.Writer
+		parser   *markdown.Parser
+	)
+	if postpath, err = post.Path(); err != nil {
+		return
+	}
+	src = filepath.Join(srcdir, post.Id, "body.md")
+	dst = path.Join(gw.args.dst, postpath)
+	if fsrc, err = gw.fs.Open(src); err != nil {
+		return
+	}
+	defer fsrc.Close()
+	gw.fs.MkdirAll(path.Dir(dst), 0755)
+	if fdst, err = gw.fs.Create(dst); err != nil {
+		return
+	}
+	defer fdst.Close()
+	body = new(bytes.Buffer)
+	parser = markdown.NewParser(&markdown.Extensions{Smart: true})
+	parser.Markdown(fsrc, markdown.ToHTML(body))
+	post.Body = body.String()
+	writer = bufio.NewWriter(fdst)
+	data := map[string]interface{}{
+		"Post": post,
+		"Site": gw.site,
+	}
+	err = gw.templates["post"].Execute(writer, data)
+	writer.Flush()
 	return
 }
 
