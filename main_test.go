@@ -29,7 +29,6 @@ func Setup() (gw *GhostWriter, fs *fauxfile.MockFilesystem) {
 	fs.MkdirAll("/home/test", 0755)
 	fs.Chdir("/home/test")
 	fs.Mkdir("src", 0755)
-	fs.Mkdir("build", 0755)
 	gw = NewGhostWriter(fs, &Args{
 		src: "src",
 		dst: "build",

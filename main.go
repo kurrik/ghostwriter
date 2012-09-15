@@ -63,6 +63,9 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 
 // Parses the src directory, rendering into dst as needed.
 func (gw *GhostWriter) Process() (err error) {
+	if err = gw.fs.MkdirAll(gw.args.dst, 0755); err != nil {
+		return
+	}
 	if err = gw.parseSiteMeta("config.yaml"); err != nil {
 		return
 	}
