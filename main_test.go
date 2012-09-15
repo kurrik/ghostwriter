@@ -201,6 +201,53 @@ This is markdown
 		t.Fatalf("Error: %v", err)
 	}
 	if out != html {
-		t.Fatalf("Read: %v, Expected: %v", out, html)
+		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html)
 	}
 }
+
+// Ensures links between posts are rendered
+func TestRenderLinks(t *testing.T) {
+	gw, fs := Setup()
+	body1 := `
+Post 1
+======
+This is a target post`
+	meta1 := `
+date: 2012-09-07
+slug: hello-world`
+	body2 := `
+Post 2
+======
+This is a <a href="{{.01-test}}">link</a> to a post.
+<img src="{{.01-test/img.png}}" />`
+	meta2 := `
+date: 2012-09-09
+slug: hello-again`
+	tmpl := `<html>{{.Post.Body}}</html>`
+	html2 := `<html><h1>Post 2</h1>
+
+<p>This is a <a href="/2012-09-07/hello-world">link</a> to a post.
+<img src="/2012-09-07/hello-world/img.png" /></p>
+</html>`
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/post.tmpl", tmpl)
+	WriteFile(fs, "src/posts/01-test/body.md", body1)
+	WriteFile(fs, "src/posts/01-test/img.png", "")
+	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
+	WriteFile(fs, "src/posts/02-test/body.md", body2)
+	WriteFile(fs, "src/posts/02-test/meta.yaml", meta2)
+	var (
+		err error
+		out string
+	)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out, err = ReadFile(fs, "build/2012-09-09/hello-again"); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out != html2 {
+		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html2)
+	}
+}
+
