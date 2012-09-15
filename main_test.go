@@ -205,6 +205,30 @@ This is markdown
 	}
 }
 
+// Ensures post content (images, etc) are copied to build dir.
+func TestPostContentCopied(t *testing.T) {
+	var (
+		err error
+		out string
+		content = "Content!"
+	)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/post.tmpl", "")
+	WriteFile(fs, "src/posts/01-test/body.md", "")
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_META)
+	WriteFile(fs, "src/posts/01-test/content.png", content)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out, err = ReadFile(fs, "build/2012-09-07/hello-world/content.png"); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out != content {
+		t.Fatalf("Read:\n%v\nExpected:\n%v", out, content)
+	}
+}
+
 // Ensures links between posts are rendered
 func TestRenderLinks(t *testing.T) {
 	gw, fs := Setup()
