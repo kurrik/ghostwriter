@@ -218,8 +218,8 @@ slug: hello-world`
 	body2 := `
 Post 2
 ======
-This is a <a href="{{.01-test}}">link</a> to a post.
-<img src="{{.01-test/img.png}}" />`
+This is a <a href="{{link "01-test"}}">link</a> to a post.
+<img src="{{link "01-test/img.png"}}" />`
 	meta2 := `
 date: 2012-09-09
 slug: hello-again`

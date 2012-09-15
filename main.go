@@ -166,18 +166,22 @@ func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
 // Parses posts under the supplied path and populates gw.site.Posts.
 func (gw *GhostWriter) parsePosts(name string) (err error) {
 	var (
-		src   = filepath.Join(gw.args.src, name)
-		names []string
-		id    string
-		post  *Post
-		msrc  string
-		ok    bool
+		src    = filepath.Join(gw.args.src, name)
+		names  []string
+		id     string
+		post   *Post
+		msrc   string
+		ok     bool
+		links  map[string]string
+		lnames []string
+		fmap   template.FuncMap
 	)
 	if names, err = gw.readDir(src); err != nil {
 		gw.log.Printf("Posts directory not found %v\n", src)
 		// Fail silently
 		return nil
 	}
+	links = make(map[string]string)
 	for _, id = range names {
 		msrc = filepath.Join(name, id, "meta.yaml")
 		if post, ok = gw.site.Posts[id]; ok == false {
@@ -191,9 +195,25 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 		if post.meta, err = gw.parsePostMeta(msrc); err != nil {
 			return
 		}
+		if lnames, err = gw.readDir(filepath.Join(src, id)); err != nil {
+			return
+		}
+		var p string
+		if p, err = post.Path(); err != nil {
+			return
+		}
+		links[id] = p
+		for _, l := range lnames {
+			links[filepath.Join(id, l)] = filepath.Join(p, l)
+		}
+	}
+	fmap = template.FuncMap{
+		"link": func(i string) string {
+			return links[i]
+		},
 	}
 	for id, post = range gw.site.Posts {
-		if err = gw.renderPost(post); err != nil {
+		if err = gw.renderPost(post, &fmap); err != nil {
 			return err
 		}
 	}
@@ -273,35 +293,50 @@ func (gw *GhostWriter) readFile(path string) (out string, err error) {
 }
 
 // Renders the initalized Post object into an HTML file in the destination.
-func (gw *GhostWriter) renderPost(post *Post) (err error) {
+func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error) {
 	var (
-		fsrc     fauxfile.File
 		fdst     fauxfile.File
 		src      string
 		dst      string
 		postpath string
+		postbody string
 		body     *bytes.Buffer
+		mdbody   *bytes.Buffer
 		writer   *bufio.Writer
 		parser   *markdown.Parser
+		tmpl     *template.Template
 	)
 	if postpath, err = post.Path(); err != nil {
 		return
 	}
 	src = filepath.Join(post.SrcDir, "body.md")
 	dst = path.Join(gw.args.dst, postpath)
-	if fsrc, err = gw.fs.Open(src); err != nil {
+	if postbody, err = gw.readFile(src); err != nil {
 		return
 	}
-	defer fsrc.Close()
 	gw.fs.MkdirAll(path.Dir(dst), 0755)
 	if fdst, err = gw.fs.Create(dst); err != nil {
 		return
 	}
 	defer fdst.Close()
+
+	// Render post body against links map.
+	tmpl, err = template.New("body").Funcs(*fmap).Parse(postbody)
+	if err != nil {
+		return
+	}
 	body = new(bytes.Buffer)
+	if err = tmpl.Execute(body, nil); err != nil {
+		return
+	}
+
+	// Render markdown
+	mdbody = new(bytes.Buffer)
 	parser = markdown.NewParser(&markdown.Extensions{Smart: true})
-	parser.Markdown(fsrc, markdown.ToHTML(body))
-	post.Body = body.String()
+	parser.Markdown(body, markdown.ToHTML(mdbody))
+	post.Body = mdbody.String()
+
+	// Render post into site template.
 	writer = bufio.NewWriter(fdst)
 	data := map[string]interface{}{
 		"Post": post,
