@@ -310,7 +310,7 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 		return
 	}
 	src = filepath.Join(post.SrcDir, "body.md")
-	dst = path.Join(gw.args.dst, postpath)
+	dst = path.Join(gw.args.dst, postpath, "index.html")
 	if postbody, err = gw.readFile(src); err != nil {
 		return
 	}

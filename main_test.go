@@ -197,7 +197,7 @@ This is markdown
 	if err = gw.Process(); err != nil {
 		t.Fatalf("Error: %v", err)
 	}
-	if out, err = ReadFile(fs, "build/2012-09-07/hello-world"); err != nil {
+	if out, err = ReadFile(fs, "build/2012-09-07/hello-world/index.html"); err != nil {
 		t.Fatalf("Error: %v", err)
 	}
 	if out != html {
@@ -243,7 +243,7 @@ slug: hello-again`
 	if err = gw.Process(); err != nil {
 		t.Fatalf("Error: %v", err)
 	}
-	if out, err = ReadFile(fs, "build/2012-09-09/hello-again"); err != nil {
+	if out, err = ReadFile(fs, "build/2012-09-09/hello-again/index.html"); err != nil {
 		t.Fatalf("Error: %v", err)
 	}
 	if out != html2 {
