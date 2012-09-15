@@ -305,6 +305,7 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 		writer   *bufio.Writer
 		parser   *markdown.Parser
 		tmpl     *template.Template
+		names    []string
 	)
 	if postpath, err = post.Path(); err != nil {
 		return
@@ -319,6 +320,20 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 		return
 	}
 	defer fdst.Close()
+	if names, err = gw.readDir(post.SrcDir); err != nil {
+		return
+	}
+	for _, name := range names {
+		switch filepath.Ext(name) {
+		case ".md":
+		case ".yaml":
+		default:
+			// Copy other files into destination-they're content.
+			s := filepath.Join(post.SrcDir, name)
+			d := filepath.Join(gw.args.dst, postpath, name)
+			gw.copyFile(s, d)
+		}
+	}
 
 	// Render post body against links map.
 	tmpl, err = template.New("body").Funcs(*fmap).Parse(postbody)
