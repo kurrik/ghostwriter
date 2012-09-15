@@ -1,0 +1,4 @@
+title: Example blog
+root: http://www.example.com
+pathformat: /{{.DatePath}}/{{.Slug}}
+dateformat: "2006-01-02"
