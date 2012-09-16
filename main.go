@@ -143,6 +143,12 @@ func (gw *GhostWriter) copyStatic(name string) (err error) {
 			queue = append(queue, names...)
 			gw.log.Printf("Creating %v\n", dst)
 			if err = gw.fs.Mkdir(dst, i.Mode()); err != nil {
+				str := err.(*os.PathError).Err.Error()
+				if str == "file exists" {
+					// Don't fail if the directory exists.
+					err = nil
+					continue
+				}
 				gw.log.Printf("Problem creating %v\n", dst)
 				return
 			}
