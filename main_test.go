@@ -274,3 +274,44 @@ slug: hello-again`
 	}
 }
 
+// Ensures the index page is rendered.
+func TestRenderIndex(t *testing.T) {
+	gw, fs := Setup()
+	body1 := "Post 1"
+	meta1 := "date: 2012-09-07\nslug: post1"
+	body2 := "Post 2"
+	meta2 := "date: 2012-09-08\nslug: post2"
+	itmpl := `<html>
+{{range .Site.Posts}}
+  <div>{{.Body}}</div>
+{{end}}
+</html>`
+	ptmpl := ``
+	html := `<html>
+  <div><p>post1</p></div>
+  <div><p>post2</p></div>
+</html>`
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/post.tmpl", ptmpl)
+	WriteFile(fs, "src/posts/01-test/body.md", body1)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
+	WriteFile(fs, "src/posts/02-test/body.md", body2)
+	WriteFile(fs, "src/posts/02-test/meta.yaml", meta2)
+	WriteFile(fs, "src/index.tmpl", itmpl)
+	var (
+		err error
+		out string
+	)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out, err = ReadFile(fs, "build/index.html"); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out != html {
+		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html)
+	}
+}
+
+
+
