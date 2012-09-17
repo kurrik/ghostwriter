@@ -35,8 +35,23 @@ import (
 
 // Arguments, passed to the main executable.
 type Args struct {
-	src string
-	dst string
+	src       string
+	dst       string
+	posts     string
+	templates string
+	static    string
+	config    string
+}
+
+func DefaultArgs() *Args {
+	return &Args{
+		src:       "src",
+		dst:       "dst",
+		posts:     "posts",
+		templates: "templates",
+		static:    "static",
+		config:    "config.yaml",
+	}
 }
 
 // Master Control Program.
@@ -66,16 +81,16 @@ func (gw *GhostWriter) Process() (err error) {
 	if err = gw.fs.MkdirAll(gw.args.dst, 0755); err != nil {
 		return
 	}
-	if err = gw.parseSiteMeta("config.yaml"); err != nil {
+	if err = gw.parseSiteMeta(); err != nil {
 		return
 	}
-	if err = gw.copyStatic("static"); err != nil {
+	if err = gw.copyStatic(); err != nil {
 		return
 	}
-	if err = gw.parseTemplates("templates"); err != nil {
+	if err = gw.parseTemplates(); err != nil {
 		return
 	}
-	if err = gw.parsePosts("posts"); err != nil {
+	if err = gw.parsePosts(); err != nil {
 		return
 	}
 	return
@@ -107,8 +122,9 @@ func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 
 // Copies content from a static directory to the destination.
 // Returns a non-nil error if something went wrong.
-func (gw *GhostWriter) copyStatic(name string) (err error) {
+func (gw *GhostWriter) copyStatic() (err error) {
 	var (
+		name  = gw.args.static
 		queue []string
 		names []string
 		p     string
@@ -173,8 +189,9 @@ func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
 }
 
 // Parses posts under the supplied path and populates gw.site.Posts.
-func (gw *GhostWriter) parsePosts(name string) (err error) {
+func (gw *GhostWriter) parsePosts() (err error) {
 	var (
+		name   = gw.args.posts
 		src    = filepath.Join(gw.args.src, name)
 		names  []string
 		id     string
@@ -230,17 +247,17 @@ func (gw *GhostWriter) parsePosts(name string) (err error) {
 }
 
 // Parses general site configuration from the source directory.
-func (gw *GhostWriter) parseSiteMeta(path string) (err error) {
-	src := filepath.Join(gw.args.src, path)
+func (gw *GhostWriter) parseSiteMeta() (err error) {
+	src := filepath.Join(gw.args.src, gw.args.config)
 	gw.log.Printf("Parsing site meta %v\n", src)
 	gw.site.meta = &SiteMeta{}
 	return gw.unyaml(src, gw.site.meta)
 }
 
 // Parses templates from the given template directory.
-func (gw *GhostWriter) parseTemplates(path string) (err error) {
+func (gw *GhostWriter) parseTemplates() (err error) {
 	var (
-		src   = filepath.Join(gw.args.src, path)
+		src   = filepath.Join(gw.args.src, gw.args.templates)
 		names []string
 		id    string
 		text  string
@@ -506,7 +523,7 @@ type SiteMeta struct {
 
 // Main routine.
 func main() {
-	a := &Args{}
+	a := DefaultArgs()
 	flag.StringVar(&a.src, "src", "src", "Path to src files.")
 	flag.StringVar(&a.dst, "dst", "dst", "Build output directory.")
 	flag.Parse()

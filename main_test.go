@@ -29,10 +29,9 @@ func Setup() (gw *GhostWriter, fs *fauxfile.MockFilesystem) {
 	fs.MkdirAll("/home/test", 0755)
 	fs.Chdir("/home/test")
 	fs.Mkdir("src", 0755)
-	gw = NewGhostWriter(fs, &Args{
-		src: "src",
-		dst: "build",
-	})
+	args := DefaultArgs()
+	args.dst = "build"
+	gw = NewGhostWriter(fs, args)
 	gw.log = log.New(ioutil.Discard, "", log.LstdFlags)
 	return
 }
@@ -86,7 +85,7 @@ dateformat: "2006-01-02"`
 func TestParseSiteMeta(t *testing.T) {
 	gw, fs := Setup()
 	WriteFile(fs, "/home/test/src/config.yaml", SITE_META)
-	if err := gw.parseSiteMeta("config.yaml"); err != nil {
+	if err := gw.parseSiteMeta(); err != nil {
 		t.Fatalf("parseConfig returned error: %v", err)
 	}
 	if gw.site.meta.Title != "Test blog" {
