@@ -281,14 +281,19 @@ func TestRenderIndex(t *testing.T) {
 	body2 := "Post 2"
 	meta2 := "date: 2012-09-08\nslug: post2"
 	itmpl := `<html>
-{{range .Site.Posts}}
+{{range .Posts}}
   <div>{{.Body}}</div>
 {{end}}
 </html>`
 	ptmpl := ``
 	html := `<html>
-  <div><p>post1</p></div>
-  <div><p>post2</p></div>
+
+  <div><p>Post 1</p>
+</div>
+
+  <div><p>Post 2</p>
+</div>
+
 </html>`
 	WriteFile(fs, "src/config.yaml", SITE_META)
 	WriteFile(fs, "src/templates/post.tmpl", ptmpl)

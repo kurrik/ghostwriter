@@ -84,13 +84,13 @@ func (gw *GhostWriter) Process() (err error) {
 	if err = gw.parseSiteMeta(); err != nil {
 		return
 	}
-	if err = gw.copyStatic(); err != nil {
-		return
-	}
 	if err = gw.parseTemplates(); err != nil {
 		return
 	}
 	if err = gw.parsePosts(); err != nil {
+		return
+	}
+	if err = gw.renderMisc(); err != nil {
 		return
 	}
 	return
@@ -117,64 +117,6 @@ func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 	}
 	fdst.Chmod(fi.Mode())
 	_, err = io.Copy(fdst, fsrc)
-	return
-}
-
-// Copies content from a static directory to the destination.
-// Returns a non-nil error if something went wrong.
-func (gw *GhostWriter) copyStatic() (err error) {
-	var (
-		name  = gw.args.static
-		queue []string
-		names []string
-		p     string
-		n     string
-		src   string
-		dst   string
-		x     int
-		i     os.FileInfo
-	)
-	queue = []string{name}
-	for len(queue) > 0 {
-		p = queue[0]
-		queue = queue[1:]
-		src = filepath.Join(gw.args.src, p)
-		dst = filepath.Join(gw.args.dst, p)
-		if i, err = gw.fs.Stat(src); err != nil {
-			// Passed in path
-			if name == p {
-				gw.log.Printf("Static dir not found %v\n", src)
-				// Fail silently
-				return nil
-			}
-			return
-		}
-		if i.IsDir() {
-			if names, err = gw.readDir(src); err != nil {
-				return
-			}
-			for x, n = range names {
-				names[x] = filepath.Join(p, n)
-			}
-			queue = append(queue, names...)
-			gw.log.Printf("Creating %v\n", dst)
-			if err = gw.fs.Mkdir(dst, i.Mode()); err != nil {
-				str := err.(*os.PathError).Err.Error()
-				if str == "file exists" {
-					// Don't fail if the directory exists.
-					err = nil
-					continue
-				}
-				gw.log.Printf("Problem creating %v\n", dst)
-				return
-			}
-		} else {
-			gw.log.Printf("Copying %v to %v\n", src, dst)
-			if _, err = gw.copyFile(src, dst); err != nil {
-				return
-			}
-		}
-	}
 	return
 }
 
@@ -318,6 +260,81 @@ func (gw *GhostWriter) readFile(path string) (out string, err error) {
 	return
 }
 
+// Renders miscellaneous files, including static content, into output dir.
+// Returns a non-nil error if something went wrong.
+func (gw *GhostWriter) renderMisc() (err error) {
+	var (
+		name  = gw.args.static
+		queue []string
+		names []string
+		p     string
+		n     string
+		src   string
+		dst   string
+		x     int
+		i     os.FileInfo
+	)
+	if queue, err = gw.readDir(gw.args.src); err != nil {
+		return
+	}
+	for len(queue) > 0 {
+		p = queue[0]
+		queue = queue[1:]
+		switch p {
+		case gw.args.posts:
+			continue
+		case gw.args.templates:
+			continue
+		}
+		src = filepath.Join(gw.args.src, p)
+		dst = filepath.Join(gw.args.dst, p)
+		if i, err = gw.fs.Stat(src); err != nil {
+			// Passed in path
+			if name == p {
+				gw.log.Printf("Static dir not found %v\n", src)
+				// Fail silently
+				return nil
+			}
+			return
+		}
+		if i.IsDir() {
+			if names, err = gw.readDir(src); err != nil {
+				return
+			}
+			for x, n = range names {
+				names[x] = filepath.Join(p, n)
+			}
+			queue = append(queue, names...)
+			gw.log.Printf("Creating %v\n", dst)
+			if err = gw.fs.Mkdir(dst, i.Mode()); err != nil {
+				str := err.(*os.PathError).Err.Error()
+				if str == "file exists" {
+					// Don't fail if the directory exists.
+					err = nil
+					continue
+				}
+				gw.log.Printf("Problem creating %v\n", dst)
+				return
+			}
+		} else {
+			switch filepath.Ext(src) {
+			case ".tmpl":
+				dst = fmt.Sprintf("%v.html", dst[:len(dst)-5])
+				gw.log.Printf("Rendering %v to %v\n", src, dst)
+				if err = gw.renderTemplate(src, dst); err != nil {
+					return
+				}
+			default:
+				gw.log.Printf("Copying %v to %v\n", src, dst)
+				if _, err = gw.copyFile(src, dst); err != nil {
+					return
+				}
+			}
+		}
+	}
+	return
+}
+
 // Renders the initalized Post object into an HTML file in the destination.
 func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error) {
 	var (
@@ -384,6 +401,29 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 		"Site": gw.site,
 	}
 	err = gw.templates["post"].Execute(writer, data)
+	writer.Flush()
+	return
+}
+
+// Renders a Go template from the given path to the output path.
+func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
+	var (
+		text   string
+		tmpl   *template.Template
+		writer *bufio.Writer
+		f      fauxfile.File
+	)
+	if text, err = gw.readFile(src); err != nil {
+		return
+	}
+	if tmpl, err = template.New("file").Parse(text); err != nil {
+		return
+	}
+	if f, err = gw.fs.Create(dst); err != nil {
+		return
+	}
+	writer = bufio.NewWriter(f)
+	err = tmpl.Execute(writer, gw.site)
 	writer.Flush()
 	return
 }
