@@ -6,9 +6,21 @@ all myself.
 Status
 ------
 Still really rough.  I'll update once I'm using this for actual projects.
+Currently building the example site under `testsite`.  Run:
 
-Installing
-----------
+    $ cd testsite
+    $ go run ../main.go
+
+You can serve the output with:
+
+    $ cd testsite/dst
+    $ python -m SimpleHTTPServer
+
+Which will host the rendered site at http://localhost:8000
+Note that you'll need to re-run Ghostwriter if you make source changes.
+
+Dependencies
+------------
 Run:
 
     go get launchpad.net/goyaml
