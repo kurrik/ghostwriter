@@ -323,18 +323,18 @@ func TestIncludeTemplates(t *testing.T) {
 	body1 := "Post 1"
 	meta1 := "date: 2012-09-07\nslug: post1"
 	tmpl_head := `<html>
-  <head><title>{{.Site.Title}}</title></head>
+  <head><title>{{.Title}}</title></head>
   <body>`
 	tmpl_foot := `  </body>
 </html>`
-	index := `{{template "head"}}
+	index := `{{template "head" .}}
 {{range .Posts}}
   <div>{{.Body}}</div>
 {{end}}
-{{template "foot"}}`
+{{template "foot" .}}`
 	tmpl_post := ``
 	html := `<html>
-  <head><title>Example Site</title></head>
+  <head><title>Test blog</title></head>
   <body>
 
   <div><p>Post 1</p>

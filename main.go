@@ -60,7 +60,7 @@ type GhostWriter struct {
 	fs        fauxfile.Filesystem
 	log       *log.Logger
 	site      *Site
-	templates map[string]*template.Template
+	templates *template.Template
 }
 
 // Creates a new GhostWriter.
@@ -203,9 +203,8 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		names []string
 		id    string
 		text  string
-		tmpl  *template.Template
 	)
-	gw.templates = make(map[string]*template.Template)
+	gw.templates = template.New("main")
 	if names, err = gw.readDir(src); err != nil {
 		gw.log.Printf("Templates directory not found %v\n", src)
 		// Fail silently
@@ -215,11 +214,10 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		if text, err = gw.readFile(filepath.Join(src, n)); err != nil {
 			return
 		}
-		if tmpl, err = template.New(id).Parse(text); err != nil {
+		id = strings.Replace(n, filepath.Ext(n), "", -1)
+		if _, err = gw.templates.New(id).Parse(text); err != nil {
 			return
 		}
-		id = strings.Replace(n, filepath.Ext(n), "", -1)
-		gw.templates[id] = tmpl
 	}
 	return nil
 }
@@ -400,7 +398,7 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 		"Post": post,
 		"Site": gw.site,
 	}
-	err = gw.templates["post"].Execute(writer, data)
+	err = gw.templates.Lookup("post").Execute(writer, data)
 	writer.Flush()
 	return
 }
@@ -416,7 +414,7 @@ func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 	if text, err = gw.readFile(src); err != nil {
 		return
 	}
-	if tmpl, err = template.New("file").Parse(text); err != nil {
+	if tmpl, err = gw.templates.New(src).Parse(text); err != nil {
 		return
 	}
 	if f, err = gw.fs.Create(dst); err != nil {
