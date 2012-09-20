@@ -317,5 +317,49 @@ func TestRenderIndex(t *testing.T) {
 	}
 }
 
+// Ensures templates con include other templates.
+func TestIncludeTemplates(t *testing.T) {
+	gw, fs := Setup()
+	body1 := "Post 1"
+	meta1 := "date: 2012-09-07\nslug: post1"
+	tmpl_head := `<html>
+  <head><title>{{.Site.Title}}</title></head>
+  <body>`
+	tmpl_foot := `  </body>
+</html>`
+	index := `{{template "head"}}
+{{range .Posts}}
+  <div>{{.Body}}</div>
+{{end}}
+{{template "foot"}}`
+	tmpl_post := ``
+	html := `<html>
+  <head><title>Example Site</title></head>
+  <body>
 
+  <div><p>Post 1</p>
+</div>
 
+  </body>
+</html>`
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/post.tmpl", tmpl_post)
+	WriteFile(fs, "src/templates/head.tmpl", tmpl_head)
+	WriteFile(fs, "src/templates/foot.tmpl", tmpl_foot)
+	WriteFile(fs, "src/posts/01-test/body.md", body1)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
+	WriteFile(fs, "src/index.tmpl", index)
+	var (
+		err error
+		out string
+	)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out, err = ReadFile(fs, "build/index.html"); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out != html {
+		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html)
+	}
+}
