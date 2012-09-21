@@ -206,8 +206,8 @@ This is markdown
 // Ensures post content (images, etc) are copied to build dir.
 func TestPostContentCopied(t *testing.T) {
 	var (
-		err error
-		out string
+		err     error
+		out     string
 		content = "Content!"
 	)
 	gw, fs := Setup()
@@ -361,5 +361,47 @@ func TestIncludeTemplates(t *testing.T) {
 	}
 	if out != html {
 		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html)
+	}
+}
+
+// Ensures pages are rendered from a master template
+func TestTemplateHierarchy(t *testing.T) {
+	gw, fs := Setup()
+	body1 := "Post 1"
+	meta1 := "date: 2012-09-07\nslug: post1"
+	body2 := "Post 2"
+	meta2 := "date: 2012-09-08\nslug: post2"
+	tmpl_main := "<html>{{template \"h\"}}{{template \"b\"}}</html>"
+	tmpl_post := "[{{.Body}}]"
+	tmpl_indx := "{{define \"h\"}}[head]{{end}}" +
+		"{{define \"b\"}}{{range .Posts}}[{{.Body}}]{{end}}{{end}}"
+	html_indx := "<html>[head][Post 1][Post 2]</html>"
+	html_post := "<html>[Post 1]</html>"
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/main.tmpl", tmpl_main)
+	WriteFile(fs, "src/templates/post.tmpl", tmpl_post)
+	WriteFile(fs, "src/posts/01-test/body.md", body1)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
+	WriteFile(fs, "src/posts/02-test/body.md", body2)
+	WriteFile(fs, "src/posts/02-test/meta.yaml", meta2)
+	WriteFile(fs, "src/index.tmpl", tmpl_indx)
+	var (
+		err error
+		out string
+	)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out, err = ReadFile(fs, "build/index.html"); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out != html_indx {
+		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html_indx)
+	}
+	if out, err = ReadFile(fs, "build/2012-09-07/index.html"); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out != html_post {
+		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html_post)
 	}
 }
