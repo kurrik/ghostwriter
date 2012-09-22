@@ -21,8 +21,15 @@ Note that you'll need to re-run Ghostwriter if you make source changes.
 
 Dependencies
 ------------
+Make sure you have bazaar installed.  In Ubuntu:
+
+    sudo apt-get install bzr
+
 Run:
 
     go get launchpad.net/goyaml
     go get github.com/knieriem/markdown
     go get github.com/kurrik/fauxfile
+
+The goyaml library will show some warnings when compiling but it appears to have
+no effect.
