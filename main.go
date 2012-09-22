@@ -28,6 +28,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -58,13 +59,12 @@ func DefaultArgs() *Args {
 
 // Master Control Program.
 type GhostWriter struct {
-	args      *Args
-	fs        fauxfile.Filesystem
-	log       *log.Logger
-	site      *Site
+	args         *Args
+	fs           fauxfile.Filesystem
+	log          *log.Logger
+	site         *Site
 	rootTemplate *template.Template
 	postTemplate *template.Template
-
 }
 
 // Creates a new GhostWriter.
@@ -218,10 +218,10 @@ func (gw *GhostWriter) parseSiteMeta() (err error) {
 // Parses root templates from the given template path.
 func (gw *GhostWriter) parseTemplates() (err error) {
 	var (
-		src   = filepath.Join(gw.args.src, gw.args.templates)
-		names []string
-		id    string
-		text  string
+		src       = filepath.Join(gw.args.src, gw.args.templates)
+		names     []string
+		id        string
+		text      string
 		foundPost bool
 		foundRoot bool
 	)
@@ -241,7 +241,7 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		if n == gw.args.postTemplate {
 			foundPost = true
 			gw.postTemplate = template.New("post")
-			_, err = gw.postTemplate.Parse(text);
+			_, err = gw.postTemplate.Parse(text)
 			gw.log.Printf("Parsed post template with name %v\n", id)
 		} else {
 			foundRoot = true
@@ -461,6 +461,7 @@ func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 		tmpl   *template.Template
 		writer *bufio.Writer
 		f      fauxfile.File
+		data   map[string]interface{}
 	)
 	if text, err = gw.readFile(src); err != nil {
 		return
@@ -475,7 +476,10 @@ func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 		return
 	}
 	writer = bufio.NewWriter(f)
-	err = clone.Execute(writer, gw.site)
+	data = map[string]interface{}{
+		"Site": gw.site,
+	}
+	err = clone.Execute(writer, data)
 	writer.Flush()
 	return
 }
@@ -514,6 +518,15 @@ type Post struct {
 // Returns the date of the post, as configured in the post metadata.
 func (p *Post) Date() (t time.Time, err error) {
 	return time.Parse(p.site.meta.DateFormat, p.meta.Date)
+}
+
+// Returns the post date or panics if it has an error.
+func (p *Post) SureDate() (t time.Time) {
+	var err error
+	if t, err = p.Date(); err != nil {
+		panic(fmt.Sprintf("Could not get date from post %v", p.Id))
+	}
+	return
 }
 
 // Returns the date of the post in the configured path format.
@@ -591,6 +604,38 @@ func (s *Site) Title() string {
 // Returns the root of the site's URL.
 func (s *Site) Root() string {
 	return s.meta.Root
+}
+
+func (s *Site) RecentPosts() Posts {
+	p := PostsFromMap(s.Posts)
+	sort.Sort(ByDateDesc{p})
+	return p
+}
+
+type Posts []*Post
+
+func (p Posts) Len() int {
+	return len(p)
+}
+
+func (p Posts) Swap(i int, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+func PostsFromMap(m map[string]*Post) Posts {
+	p := make(Posts, len(m))
+	i := 0
+	for _, post := range m {
+		p[i] = post
+		i++
+	}
+	return p
+}
+
+type ByDateDesc struct{ Posts }
+
+func (p ByDateDesc) Less(i int, j int) bool {
+	return p.Posts[i].SureDate().After(p.Posts[j].SureDate())
 }
 
 // Returns a template suitable for rendering post URLs.

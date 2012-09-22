@@ -21,8 +21,35 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 	"testing"
 )
+
+func LooseCompare(t *testing.T, a string, b string) bool {
+	a = strings.Replace(a, " ", "", -1)
+	a = strings.Replace(a, "\n", "", -1)
+	b = strings.Replace(b, " ", "", -1)
+	b = strings.Replace(b, "\n", "", -1)
+	if a != b {
+		t.Logf("LooseCompare diff:\n%v\n%v", a, b)
+		return false
+	}
+	return true
+}
+
+func LooseCompareFile(t *testing.T, fs *fauxfile.MockFilesystem, path string, gold string) {
+	var (
+		err error
+		out string
+	)
+	if out, err = ReadFile(fs, path); err != nil {
+		t.Errorf("Error reading: %v", err)
+		return
+	}
+	if !LooseCompare(t, out, gold) {
+		t.Errorf("Read (%v):\n%v\nExpected:\n%v", path, out, gold)
+	}
+}
 
 func Setup() (gw *GhostWriter, fs *fauxfile.MockFilesystem) {
 	fs = fauxfile.NewMockFilesystem()
@@ -81,6 +108,120 @@ root: http://www.example.com
 pathformat: /{{.DatePath}}/{{.Slug}}
 dateformat: "2006-01-02"`
 
+const POST_1_META = `
+date: 2012-09-07
+slug: hello-world
+title: Hello World!
+tags:
+  - hello
+  - world`
+
+const POST_1_MD = `
+This is a fake post, for testing.
+
+This is markdown
+----------------`
+
+const POST_2_META = `
+date: 2012-09-09
+slug: hello-again
+title: Hello Again!`
+
+const POST_2_MD = `
+This is a <a href="{{link "01-test"}}">link</a> to a post.
+<img src="{{link "01-test/img.png"}}" />`
+
+const SITE_TMPL = `
+<!DOCTYPE html>
+<html>
+  <head>
+    {{template "head" .}}
+  </head>
+  <body>
+    {{template "body" .}}
+  </body>
+</html>
+{{define "head"}}
+  <title>{{.Site.Title}}</title>
+{{end}}
+{{define "body"}}{{end}}`
+
+const POST_TMPL = `
+{{define "head"}}
+  <title>{{.Site.Title}} - {{.Post.Title}}</title>
+  <link rel="canonical" href="{{.Post.Permalink}}" />
+{{end}}
+{{define "body"}}
+  <h1>{{.Post.Title}}</h1>
+  <div>{{.Post.Body}}</div>
+{{end}}`
+
+const POST_1_HTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test blog - Hello World!</title>
+    <link rel="canonical" href="http://www.example.com/2012-09-07/hello-world" />
+  </head>
+  <body>
+    <h1>Hello World!</h1>
+    <div>
+      <p>This is a fake post, for testing.</p>
+      <h2>This is markdown</h2>
+    </div>
+  </body>
+</html>`
+
+const POST_2_HTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test blog - Hello Again!</title>
+    <link rel="canonical" href="http://www.example.com/2012-09-09/hello-again" />
+  </head>
+  <body>
+    <h1>Hello Again!</h1>
+    <div>
+      <p>
+        This is a <a href="/2012-09-07/hello-world">link</a> to a post.
+        <img src="/2012-09-07/hello-world/img.png" />
+      </p>
+    </div>
+  </body>
+</html>`
+
+const INDEX_TMPL = `
+{{define "body"}}
+  <h1>{{.Site.Title}}</h1>
+  {{range .Site.RecentPosts}}
+    <h2>{{.Title}}</h2>
+    <div>{{.Body}}</div>
+  {{end}}
+{{end}}`
+
+const INDEX_HTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test blog</title>
+  </head>
+  <body>
+    <h1>Test blog</h1>
+    <h2>Hello Again!</h2>
+    <div>
+      <p>
+       This is a <a href="/2012-09-07/hello-world">link</a> to a post.
+       <img src="/2012-09-07/hello-world/img.png" />
+      </p>
+    </div>
+    <h2>Hello World!</h2>
+    <div>
+      <p>This is a fake post, for testing.</p>
+      <h2>This is markdown</h2>
+    </div>
+  </body>
+</html>`
+
 // Ensures that config files are parsed and values pulled out.
 func TestParseSiteMeta(t *testing.T) {
 	gw, fs := Setup()
@@ -102,18 +243,10 @@ func TestParseSiteMeta(t *testing.T) {
 	}
 }
 
-const POST_META = `
-date: 2012-09-07
-slug: hello-world
-title: Hello World!
-tags:
-  - hello
-  - world`
-
 // Ensures that post meta files are parsed and values pulled out.
 func TestParsePostMeta(t *testing.T) {
 	gw, fs := Setup()
-	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_META)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_1_META)
 	meta, err := gw.parsePostMeta("posts/01-test/meta.yaml")
 	if err != nil {
 		t.Fatalf("parsePostMeta returned error: %v", err)
@@ -151,62 +284,6 @@ func TestFilesCopiedToBuild(t *testing.T) {
 	}
 }
 
-// Ensures post content is rendered appropriately.
-func TestRenderContent(t *testing.T) {
-	gw, fs := Setup()
-	body := `
-Hello World
-===========
-This is a fake post, for testing.
-
-This is markdown
-----------------`
-	tmpl := `<!DOCTYPE html>
-<html>
-  <head>
-    <title>{{.Site.Title}} - {{.Post.Title}}</title>
-    <link rel="canonical" href="{{.Post.Permalink}}" />
-  </head>
-  <body>
-{{template "body" .}}
-  </body>
-</html>{{define "body"}}Foo{{end}}`
-	tmpl_post := `{{define "body"}}{{.Post.Body}}{{end}}`
-	html := `<!DOCTYPE html>
-<html>
-  <head>
-    <title>Test blog - Hello World!</title>
-    <link rel="canonical" href="http://www.example.com/2012-09-07/hello-world" />
-  </head>
-  <body>
-<h1>Hello World</h1>
-
-<p>This is a fake post, for testing.</p>
-
-<h2>This is markdown</h2>
-
-  </body>
-</html>`
-	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/global.tmpl", tmpl)
-	WriteFile(fs, "src/templates/post.tmpl", tmpl_post)
-	WriteFile(fs, "src/posts/01-test/body.md", body)
-	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_META)
-	var (
-		err error
-		out string
-	)
-	if err = gw.Process(); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out, err = ReadFile(fs, "build/2012-09-07/hello-world/index.html"); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out != html {
-		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html)
-	}
-}
-
 // Ensures post content (images, etc) are copied to build dir.
 func TestPostContentCopied(t *testing.T) {
 	var (
@@ -218,7 +295,7 @@ func TestPostContentCopied(t *testing.T) {
 	WriteFile(fs, "src/config.yaml", SITE_META)
 	WriteFile(fs, "src/templates/post.tmpl", "")
 	WriteFile(fs, "src/posts/01-test/body.md", "")
-	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_META)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_1_META)
 	WriteFile(fs, "src/posts/01-test/content.png", content)
 	if err = gw.Process(); err != nil {
 		t.Fatalf("Error: %v", err)
@@ -231,188 +308,22 @@ func TestPostContentCopied(t *testing.T) {
 	}
 }
 
-// Ensures links between posts are rendered
-func TestRenderLinks(t *testing.T) {
+// Ensures a complex site is rendered
+func TestProcess(t *testing.T) {
 	gw, fs := Setup()
-	body1 := `
-Post 1
-======
-This is a target post`
-	meta1 := `
-date: 2012-09-07
-slug: hello-world`
-	body2 := `
-Post 2
-======
-This is a <a href="{{link "01-test"}}">link</a> to a post.
-<img src="{{link "01-test/img.png"}}" />`
-	meta2 := `
-date: 2012-09-09
-slug: hello-again`
-	tmpl := `<html>{{.Post.Body}}</html>`
-	html2 := `<html><h1>Post 2</h1>
-
-<p>This is a <a href="/2012-09-07/hello-world">link</a> to a post.
-<img src="/2012-09-07/hello-world/img.png" /></p>
-</html>`
 	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/post.tmpl", tmpl)
-	WriteFile(fs, "src/posts/01-test/body.md", body1)
+	WriteFile(fs, "src/templates/root.tmpl", SITE_TMPL)
+	WriteFile(fs, "src/templates/post.tmpl", POST_TMPL)
+	WriteFile(fs, "src/posts/01-test/body.md", POST_1_MD)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_1_META)
 	WriteFile(fs, "src/posts/01-test/img.png", "")
-	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
-	WriteFile(fs, "src/posts/02-test/body.md", body2)
-	WriteFile(fs, "src/posts/02-test/meta.yaml", meta2)
-	var (
-		err error
-		out string
-	)
-	if err = gw.Process(); err != nil {
+	WriteFile(fs, "src/posts/02-test/body.md", POST_2_MD)
+	WriteFile(fs, "src/posts/02-test/meta.yaml", POST_2_META)
+	WriteFile(fs, "src/index.tmpl", INDEX_TMPL)
+	if err := gw.Process(); err != nil {
 		t.Fatalf("Error: %v", err)
 	}
-	if out, err = ReadFile(fs, "build/2012-09-09/hello-again/index.html"); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out != html2 {
-		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html2)
-	}
-}
-
-// Ensures the index page is rendered.
-func TestRenderIndex(t *testing.T) {
-	gw, fs := Setup()
-	body1 := "Post 1"
-	meta1 := "date: 2012-09-07\nslug: post1"
-	body2 := "Post 2"
-	meta2 := "date: 2012-09-08\nslug: post2"
-	index := `{{define "body"}}
-{{range .Posts}}
-  <div>{{.Body}}</div>
-{{end}}
-{{end}}`
-	tmpl := `<html>{{template "body" .}}</html>{{define "body"}}{{end}}`
-	post_tmpl := `{{define "body"}}{{.Post.Body}}{{end}}`
-	html := `<html>
-
-  <div><p>Post 1</p>
-</div>
-
-  <div><p>Post 2</p>
-</div>
-
-</html>`
-	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/root.tmpl", tmpl)
-	WriteFile(fs, "src/templates/post.tmpl", post_tmpl)
-	WriteFile(fs, "src/posts/01-test/body.md", body1)
-	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
-	WriteFile(fs, "src/posts/02-test/body.md", body2)
-	WriteFile(fs, "src/posts/02-test/meta.yaml", meta2)
-	WriteFile(fs, "src/index.tmpl", index)
-	var (
-		err error
-		out string
-	)
-	if err = gw.Process(); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out, err = ReadFile(fs, "build/index.html"); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out != html {
-		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html)
-	}
-}
-
-// Ensures templates con include other templates.
-func TestIncludeTemplates(t *testing.T) {
-	gw, fs := Setup()
-	body1 := "Post 1"
-	meta1 := "date: 2012-09-07\nslug: post1"
-	tmpl := `<html>
-  <head>
-    <title>{{.Title}}</title>
-    {{template "head" .}}
-  </head>
-  <body>
-    {{template "body" .}}
-  </body>
-</html>
-{{define "head"}}{{end}}
-{{define "body"}}{{end}}`
-	index := `
-{{define "head"}}<meta foo>{{end}}
-{{define "body"}}{{range .Posts}}<div>{{.Body}}</div>{{end}}{{end}}`
-	tmpl_post := `{{define "head"}}{{end}}{{define "body"}}{{end}}`
-	html := `<html>
-  <head>
-    <title>Test blog</title>
-    <meta foo>
-  </head>
-  <body>
-    <div><p>Post 1</p>
-</div>
-  </body>
-</html>
-
-`
-	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/global.tmpl", tmpl)
-	WriteFile(fs, "src/templates/post.tmpl", tmpl_post)
-	WriteFile(fs, "src/posts/01-test/body.md", body1)
-	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
-	WriteFile(fs, "src/index.tmpl", index)
-	var (
-		err error
-		out string
-	)
-	if err = gw.Process(); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out, err = ReadFile(fs, "build/index.html"); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out != html {
-		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html)
-	}
-}
-
-// Ensures pages are rendered from a master template
-func TestTemplateHierarchy(t *testing.T) {
-	gw, fs := Setup()
-	body1 := "Post 1"
-	meta1 := "date: 2012-09-07\nslug: post1"
-	body2 := "Post 2"
-	meta2 := "date: 2012-09-08\nslug: post2"
-	tmpl_base := "<html>{{template \"h\" .}}{{template \"b\" .}}</html>{{define \"h\"}}{{end}}{{define \"b\"}}{{end}}"
-	tmpl_post := "{{define \"h\"}}{{end}}{{define \"b\"}}[{{.Post.Body}}]{{end}}"
-	tmpl_indx := "{{define \"h\"}}[head]{{end}}{{define \"b\"}}{{range .Posts}}[{{.Body}}]{{end}}{{end}}"
-	html_indx := "<html>[head][<p>Post 1</p>\n][<p>Post 2</p>\n]</html>"
-	html_post := "<html>[<p>Post 1</p>\n]</html>"
-	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/global.tmpl", tmpl_base)
-	WriteFile(fs, "src/templates/post.tmpl", tmpl_post)
-	WriteFile(fs, "src/posts/01-test/body.md", body1)
-	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
-	WriteFile(fs, "src/posts/02-test/body.md", body2)
-	WriteFile(fs, "src/posts/02-test/meta.yaml", meta2)
-	WriteFile(fs, "src/index.tmpl", tmpl_indx)
-	var (
-		err error
-		out string
-	)
-	if err = gw.Process(); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out, err = ReadFile(fs, "build/index.html"); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out != html_indx {
-		t.Errorf("Read:\n%v\nExpected:\n%v", out, html_indx)
-	}
-	if out, err = ReadFile(fs, "build/2012-09-07/post1/index.html"); err != nil {
-		t.Fatalf("Error: %v", err)
-	}
-	if out != html_post {
-		t.Errorf("Read:\n%v\nExpected:\n%v", out, html_post)
-	}
+	LooseCompareFile(t, fs, "build/index.html", INDEX_HTML)
+	LooseCompareFile(t, fs, "build/2012-09-07/hello-world/index.html", POST_1_HTML)
+	LooseCompareFile(t, fs, "build/2012-09-09/hello-again/index.html", POST_2_HTML)
 }
