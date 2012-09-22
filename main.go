@@ -35,22 +35,24 @@ import (
 
 // Arguments, passed to the main executable.
 type Args struct {
-	src       string
-	dst       string
-	posts     string
-	templates string
-	static    string
-	config    string
+	src          string
+	dst          string
+	posts        string
+	templates    string
+	static       string
+	config       string
+	postTemplate string
 }
 
 func DefaultArgs() *Args {
 	return &Args{
-		src:       "src",
-		dst:       "dst",
-		posts:     "posts",
-		templates: "templates",
-		static:    "static",
-		config:    "config.yaml",
+		src:          "src",
+		dst:          "dst",
+		posts:        "posts",
+		templates:    "templates",
+		static:       "static",
+		config:       "config.yaml",
+		postTemplate: "post.tmpl",
 	}
 }
 
@@ -60,7 +62,9 @@ type GhostWriter struct {
 	fs        fauxfile.Filesystem
 	log       *log.Logger
 	site      *Site
-	templates *template.Template
+	rootTemplate *template.Template
+	postTemplate *template.Template
+
 }
 
 // Creates a new GhostWriter.
@@ -122,7 +126,7 @@ func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 
 // Returns a copy of the global template with the supplied template merged in.
 func (gw *GhostWriter) mergeTemplate(t *template.Template) (out *template.Template, err error) {
-	if out, err = gw.templates.Clone(); err != nil {
+	if out, err = gw.rootTemplate.Clone(); err != nil {
 		return
 	}
 	for _, tmpl := range t.Templates() {
@@ -218,24 +222,51 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		names []string
 		id    string
 		text  string
+		foundPost bool
+		foundRoot bool
 	)
-	gw.templates = template.New("root")
+	gw.rootTemplate = template.New("root")
 	if names, err = gw.readDir(src); err != nil {
 		gw.log.Printf("Templates directory not found %v\n", src)
 		// Fail silently
 		return nil
 	}
+	foundPost = false
+	foundRoot = false
 	for _, n := range names {
 		if text, err = gw.readFile(filepath.Join(src, n)); err != nil {
 			return
 		}
 		id = strings.Replace(n, filepath.Ext(n), "", -1)
-		if _, err = gw.templates.New(id).Parse(text); err != nil {
+		if n == gw.args.postTemplate {
+			foundPost = true
+			gw.postTemplate = template.New("post")
+			_, err = gw.postTemplate.Parse(text);
+			gw.log.Printf("Parsed post template with name %v\n", id)
+		} else {
+			foundRoot = true
+			_, err = gw.rootTemplate.Parse(text)
+			gw.log.Printf("Parsed root template with name %v\n", id)
+		}
+		if err != nil {
 			return
 		}
-		gw.log.Printf("Created template with name %v\n", id)
 	}
-	return nil
+	if foundRoot == false {
+		gw.log.Printf("No root template found.")
+		if foundPost {
+			// Not sure if this makes the greatest sense, but use
+			// the post template as the base template.  Maybe they
+			// just put all the HTML in there?
+			gw.rootTemplate = gw.postTemplate
+		} else {
+			gw.rootTemplate.Parse("")
+		}
+	}
+	if foundPost == false {
+		err = fmt.Errorf("No post template at: %v", gw.args.postTemplate)
+	}
+	return
 }
 
 // Reads directory contents from the given path and returns file names.
@@ -414,8 +445,10 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 		"Post": post,
 		"Site": gw.site,
 	}
-	// Should render "post" by default.
-	err = gw.templates.Lookup("global").Execute(writer, data)
+	if tmpl, err = gw.mergeTemplate(gw.postTemplate); err != nil {
+		return
+	}
+	err = tmpl.Execute(writer, data)
 	writer.Flush()
 	return
 }
@@ -442,7 +475,7 @@ func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 		return
 	}
 	writer = bufio.NewWriter(f)
-	err = clone.ExecuteTemplate(writer, "global", gw.site)
+	err = clone.Execute(writer, gw.site)
 	writer.Flush()
 	return
 }

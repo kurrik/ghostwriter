@@ -170,7 +170,7 @@ This is markdown
   <body>
 {{template "body" .}}
   </body>
-</html>`
+</html>{{define "body"}}Foo{{end}}`
 	tmpl_post := `{{define "body"}}{{.Post.Body}}{{end}}`
 	html := `<!DOCTYPE html>
 <html>
@@ -216,7 +216,7 @@ func TestPostContentCopied(t *testing.T) {
 	)
 	gw, fs := Setup()
 	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/global.tmpl", "")
+	WriteFile(fs, "src/templates/post.tmpl", "")
 	WriteFile(fs, "src/posts/01-test/body.md", "")
 	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_META)
 	WriteFile(fs, "src/posts/01-test/content.png", content)
@@ -256,7 +256,7 @@ slug: hello-again`
 <img src="/2012-09-07/hello-world/img.png" /></p>
 </html>`
 	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/global.tmpl", tmpl)
+	WriteFile(fs, "src/templates/post.tmpl", tmpl)
 	WriteFile(fs, "src/posts/01-test/body.md", body1)
 	WriteFile(fs, "src/posts/01-test/img.png", "")
 	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
@@ -289,7 +289,7 @@ func TestRenderIndex(t *testing.T) {
   <div>{{.Body}}</div>
 {{end}}
 {{end}}`
-	tmpl := `<html>{{template "body" .}}</html>`
+	tmpl := `<html>{{template "body" .}}</html>{{define "body"}}{{end}}`
 	post_tmpl := `{{define "body"}}{{.Post.Body}}{{end}}`
 	html := `<html>
 
@@ -301,7 +301,7 @@ func TestRenderIndex(t *testing.T) {
 
 </html>`
 	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/global.tmpl", tmpl)
+	WriteFile(fs, "src/templates/root.tmpl", tmpl)
 	WriteFile(fs, "src/templates/post.tmpl", post_tmpl)
 	WriteFile(fs, "src/posts/01-test/body.md", body1)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
@@ -336,7 +336,9 @@ func TestIncludeTemplates(t *testing.T) {
   <body>
     {{template "body" .}}
   </body>
-</html>`
+</html>
+{{define "head"}}{{end}}
+{{define "body"}}{{end}}`
 	index := `
 {{define "head"}}<meta foo>{{end}}
 {{define "body"}}{{range .Posts}}<div>{{.Body}}</div>{{end}}{{end}}`
@@ -350,7 +352,9 @@ func TestIncludeTemplates(t *testing.T) {
     <div><p>Post 1</p>
 </div>
   </body>
-</html>`
+</html>
+
+`
 	WriteFile(fs, "src/config.yaml", SITE_META)
 	WriteFile(fs, "src/templates/global.tmpl", tmpl)
 	WriteFile(fs, "src/templates/post.tmpl", tmpl_post)
@@ -379,7 +383,7 @@ func TestTemplateHierarchy(t *testing.T) {
 	meta1 := "date: 2012-09-07\nslug: post1"
 	body2 := "Post 2"
 	meta2 := "date: 2012-09-08\nslug: post2"
-	tmpl_base := "<html>{{template \"h\" .}}{{template \"b\" .}}</html>"
+	tmpl_base := "<html>{{template \"h\" .}}{{template \"b\" .}}</html>{{define \"h\"}}{{end}}{{define \"b\"}}{{end}}"
 	tmpl_post := "{{define \"h\"}}{{end}}{{define \"b\"}}[{{.Post.Body}}]{{end}}"
 	tmpl_indx := "{{define \"h\"}}[head]{{end}}{{define \"b\"}}{{range .Posts}}[{{.Body}}]{{end}}{{end}}"
 	html_indx := "<html>[head][<p>Post 1</p>\n][<p>Post 2</p>\n]</html>"
