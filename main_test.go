@@ -140,7 +140,9 @@ func TestFilesCopiedToBuild(t *testing.T) {
 	WriteFile(fs, "src/static/js/app.js", data1)
 	WriteFile(fs, "src/static/css/app.css", data2)
 	WriteFile(fs, "src/config.yaml", "")
-	gw.Process()
+	if err := gw.Process(); err != nil {
+		t.Fatalf("%v", err)
+	}
 	if s, _ := ReadFile(fs, "build/static/js/app.js"); s != data1 {
 		t.Errorf("Read: %v, Expected: %v", s, data1)
 	}
@@ -166,9 +168,10 @@ This is markdown
     <link rel="canonical" href="{{.Post.Permalink}}" />
   </head>
   <body>
-{{.Post.Body}}
+{{template "body" .}}
   </body>
 </html>`
+	tmpl_post := `{{define "body"}}{{.Post.Body}}{{end}}`
 	html := `<!DOCTYPE html>
 <html>
   <head>
@@ -185,7 +188,8 @@ This is markdown
   </body>
 </html>`
 	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/post.tmpl", tmpl)
+	WriteFile(fs, "src/templates/global.tmpl", tmpl)
+	WriteFile(fs, "src/templates/post.tmpl", tmpl_post)
 	WriteFile(fs, "src/posts/01-test/body.md", body)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_META)
 	var (
@@ -212,7 +216,7 @@ func TestPostContentCopied(t *testing.T) {
 	)
 	gw, fs := Setup()
 	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/post.tmpl", "")
+	WriteFile(fs, "src/templates/global.tmpl", "")
 	WriteFile(fs, "src/posts/01-test/body.md", "")
 	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_META)
 	WriteFile(fs, "src/posts/01-test/content.png", content)
@@ -252,7 +256,7 @@ slug: hello-again`
 <img src="/2012-09-07/hello-world/img.png" /></p>
 </html>`
 	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/post.tmpl", tmpl)
+	WriteFile(fs, "src/templates/global.tmpl", tmpl)
 	WriteFile(fs, "src/posts/01-test/body.md", body1)
 	WriteFile(fs, "src/posts/01-test/img.png", "")
 	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
@@ -280,12 +284,13 @@ func TestRenderIndex(t *testing.T) {
 	meta1 := "date: 2012-09-07\nslug: post1"
 	body2 := "Post 2"
 	meta2 := "date: 2012-09-08\nslug: post2"
-	itmpl := `<html>
+	index := `{{define "body"}}
 {{range .Posts}}
   <div>{{.Body}}</div>
 {{end}}
-</html>`
-	ptmpl := ``
+{{end}}`
+	tmpl := `<html>{{template "body" .}}</html>`
+	post_tmpl := `{{define "body"}}{{.Post.Body}}{{end}}`
 	html := `<html>
 
   <div><p>Post 1</p>
@@ -296,12 +301,13 @@ func TestRenderIndex(t *testing.T) {
 
 </html>`
 	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/post.tmpl", ptmpl)
+	WriteFile(fs, "src/templates/global.tmpl", tmpl)
+	WriteFile(fs, "src/templates/post.tmpl", post_tmpl)
 	WriteFile(fs, "src/posts/01-test/body.md", body1)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
 	WriteFile(fs, "src/posts/02-test/body.md", body2)
 	WriteFile(fs, "src/posts/02-test/meta.yaml", meta2)
-	WriteFile(fs, "src/index.tmpl", itmpl)
+	WriteFile(fs, "src/index.tmpl", index)
 	var (
 		err error
 		out string
@@ -322,30 +328,32 @@ func TestIncludeTemplates(t *testing.T) {
 	gw, fs := Setup()
 	body1 := "Post 1"
 	meta1 := "date: 2012-09-07\nslug: post1"
-	tmpl_head := `<html>
-  <head><title>{{.Title}}</title></head>
-  <body>`
-	tmpl_foot := `  </body>
-</html>`
-	index := `{{template "head" .}}
-{{range .Posts}}
-  <div>{{.Body}}</div>
-{{end}}
-{{template "foot" .}}`
-	tmpl_post := ``
-	html := `<html>
-  <head><title>Test blog</title></head>
+	tmpl := `<html>
+  <head>
+    <title>{{.Title}}</title>
+    {{template "head" .}}
+  </head>
   <body>
-
-  <div><p>Post 1</p>
+    {{template "body" .}}
+  </body>
+</html>`
+	index := `
+{{define "head"}}<meta foo>{{end}}
+{{define "body"}}{{range .Posts}}<div>{{.Body}}</div>{{end}}{{end}}`
+	tmpl_post := `{{define "head"}}{{end}}{{define "body"}}{{end}}`
+	html := `<html>
+  <head>
+    <title>Test blog</title>
+    <meta foo>
+  </head>
+  <body>
+    <div><p>Post 1</p>
 </div>
-
   </body>
 </html>`
 	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/global.tmpl", tmpl)
 	WriteFile(fs, "src/templates/post.tmpl", tmpl_post)
-	WriteFile(fs, "src/templates/head.tmpl", tmpl_head)
-	WriteFile(fs, "src/templates/foot.tmpl", tmpl_foot)
 	WriteFile(fs, "src/posts/01-test/body.md", body1)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
 	WriteFile(fs, "src/index.tmpl", index)
@@ -371,14 +379,13 @@ func TestTemplateHierarchy(t *testing.T) {
 	meta1 := "date: 2012-09-07\nslug: post1"
 	body2 := "Post 2"
 	meta2 := "date: 2012-09-08\nslug: post2"
-	tmpl_main := "<html>{{template \"h\"}}{{template \"b\"}}</html>"
-	tmpl_post := "[{{.Body}}]"
-	tmpl_indx := "{{define \"h\"}}[head]{{end}}" +
-		"{{define \"b\"}}{{range .Posts}}[{{.Body}}]{{end}}{{end}}"
-	html_indx := "<html>[head][Post 1][Post 2]</html>"
-	html_post := "<html>[Post 1]</html>"
+	tmpl_base := "<html>{{template \"h\" .}}{{template \"b\" .}}</html>"
+	tmpl_post := "{{define \"h\"}}{{end}}{{define \"b\"}}[{{.Post.Body}}]{{end}}"
+	tmpl_indx := "{{define \"h\"}}[head]{{end}}{{define \"b\"}}{{range .Posts}}[{{.Body}}]{{end}}{{end}}"
+	html_indx := "<html>[head][<p>Post 1</p>\n][<p>Post 2</p>\n]</html>"
+	html_post := "<html>[<p>Post 1</p>\n]</html>"
 	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/templates/main.tmpl", tmpl_main)
+	WriteFile(fs, "src/templates/global.tmpl", tmpl_base)
 	WriteFile(fs, "src/templates/post.tmpl", tmpl_post)
 	WriteFile(fs, "src/posts/01-test/body.md", body1)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", meta1)
@@ -396,12 +403,12 @@ func TestTemplateHierarchy(t *testing.T) {
 		t.Fatalf("Error: %v", err)
 	}
 	if out != html_indx {
-		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html_indx)
+		t.Errorf("Read:\n%v\nExpected:\n%v", out, html_indx)
 	}
-	if out, err = ReadFile(fs, "build/2012-09-07/index.html"); err != nil {
+	if out, err = ReadFile(fs, "build/2012-09-07/post1/index.html"); err != nil {
 		t.Fatalf("Error: %v", err)
 	}
 	if out != html_post {
-		t.Fatalf("Read:\n%v\nExpected:\n%v", out, html_post)
+		t.Errorf("Read:\n%v\nExpected:\n%v", out, html_post)
 	}
 }

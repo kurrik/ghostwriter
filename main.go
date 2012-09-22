@@ -120,6 +120,21 @@ func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 	return
 }
 
+// Returns a copy of the global template with the supplied template merged in.
+func (gw *GhostWriter) mergeTemplate(t *template.Template) (out *template.Template, err error) {
+	if out, err = gw.templates.Clone(); err != nil {
+		return
+	}
+	for _, tmpl := range t.Templates() {
+		ptr := out.Lookup(tmpl.Name())
+		if ptr == nil {
+			ptr = out.New(tmpl.Name())
+		}
+		(*ptr) = *tmpl
+	}
+	return
+}
+
 // Parses a post meta file at the given path.
 // Returns a pointer to a populated PostMeta object or an error if it failed.
 func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
@@ -196,7 +211,7 @@ func (gw *GhostWriter) parseSiteMeta() (err error) {
 	return gw.unyaml(src, gw.site.meta)
 }
 
-// Parses templates from the given template directory.
+// Parses root templates from the given template path.
 func (gw *GhostWriter) parseTemplates() (err error) {
 	var (
 		src   = filepath.Join(gw.args.src, gw.args.templates)
@@ -204,7 +219,7 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		id    string
 		text  string
 	)
-	gw.templates = template.New("main")
+	gw.templates = template.New("root")
 	if names, err = gw.readDir(src); err != nil {
 		gw.log.Printf("Templates directory not found %v\n", src)
 		// Fail silently
@@ -218,6 +233,7 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		if _, err = gw.templates.New(id).Parse(text); err != nil {
 			return
 		}
+		gw.log.Printf("Created template with name %v\n", id)
 	}
 	return nil
 }
@@ -398,7 +414,8 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 		"Post": post,
 		"Site": gw.site,
 	}
-	err = gw.templates.Lookup("post").Execute(writer, data)
+	// Should render "post" by default.
+	err = gw.templates.Lookup("global").Execute(writer, data)
 	writer.Flush()
 	return
 }
@@ -407,6 +424,7 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 	var (
 		text   string
+		clone  *template.Template
 		tmpl   *template.Template
 		writer *bufio.Writer
 		f      fauxfile.File
@@ -414,14 +432,17 @@ func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 	if text, err = gw.readFile(src); err != nil {
 		return
 	}
-	if tmpl, err = gw.templates.New(src).Parse(text); err != nil {
+	if tmpl, err = template.New(src).Parse(text); err != nil {
+		return
+	}
+	if clone, err = gw.mergeTemplate(tmpl); err != nil {
 		return
 	}
 	if f, err = gw.fs.Create(dst); err != nil {
 		return
 	}
 	writer = bufio.NewWriter(f)
-	err = tmpl.Execute(writer, gw.site)
+	err = clone.ExecuteTemplate(writer, "global", gw.site)
 	writer.Flush()
 	return
 }
