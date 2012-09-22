@@ -606,22 +606,27 @@ func (s *Site) Root() string {
 	return s.meta.Root
 }
 
+// Returns the posts of the site in desending chronological order.
 func (s *Site) RecentPosts() Posts {
 	p := PostsFromMap(s.Posts)
 	sort.Sort(ByDateDesc{p})
 	return p
 }
 
+// A list of psots.
 type Posts []*Post
 
+// Returns the length of the list.
 func (p Posts) Len() int {
 	return len(p)
 }
 
+// Swaps two posts in the given positions.
 func (p Posts) Swap(i int, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
+// Given a map of id => *Post, return a list in arbitrary order.
 func PostsFromMap(m map[string]*Post) Posts {
 	p := make(Posts, len(m))
 	i := 0
@@ -632,8 +637,10 @@ func PostsFromMap(m map[string]*Post) Posts {
 	return p
 }
 
+// Wrapper for sorting posts chronologically, descending.
 type ByDateDesc struct{ Posts }
 
+// Compares two posts.
 func (p ByDateDesc) Less(i int, j int) bool {
 	return p.Posts[i].SureDate().After(p.Posts[j].SureDate())
 }
