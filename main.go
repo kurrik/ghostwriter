@@ -63,6 +63,7 @@ type GhostWriter struct {
 	fs           fauxfile.Filesystem
 	log          *log.Logger
 	site         *Site
+	links        map[string]string
 	rootTemplate *template.Template
 	postTemplate *template.Template
 }
@@ -70,9 +71,10 @@ type GhostWriter struct {
 // Creates a new GhostWriter.
 func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 	gw := &GhostWriter{
-		args: args,
-		fs:   fs,
-		log:  log.New(os.Stderr, "", log.LstdFlags),
+		args:  args,
+		fs:    fs,
+		log:   log.New(os.Stderr, "", log.LstdFlags),
+		links: make(map[string]string),
 		site: &Site{
 			Posts: make(map[string]*Post),
 		},
@@ -159,16 +161,13 @@ func (gw *GhostWriter) parsePosts() (err error) {
 		post   *Post
 		msrc   string
 		ok     bool
-		links  map[string]string
 		lnames []string
-		fmap   template.FuncMap
 	)
 	if names, err = gw.readDir(src); err != nil {
 		gw.log.Printf("Posts directory not found %v\n", src)
 		// Fail silently
 		return nil
 	}
-	links = make(map[string]string)
 	for _, id = range names {
 		msrc = filepath.Join(name, id, "meta.yaml")
 		if post, ok = gw.site.Posts[id]; ok == false {
@@ -189,18 +188,13 @@ func (gw *GhostWriter) parsePosts() (err error) {
 		if p, err = post.Path(); err != nil {
 			return
 		}
-		links[id] = p
+		gw.links[id] = p
 		for _, l := range lnames {
-			links[filepath.Join(id, l)] = filepath.Join(p, l)
+			gw.links[filepath.Join(id, l)] = filepath.Join(p, l)
 		}
 	}
-	fmap = template.FuncMap{
-		"link": func(i string) string {
-			return links[i]
-		},
-	}
 	for id, post = range gw.site.Posts {
-		if err = gw.renderPost(post, &fmap); err != nil {
+		if err = gw.renderPost(post); err != nil {
 			return err
 		}
 	}
@@ -381,7 +375,7 @@ func (gw *GhostWriter) renderMisc() (err error) {
 }
 
 // Renders the initalized Post object into an HTML file in the destination.
-func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error) {
+func (gw *GhostWriter) renderPost(post *Post) (err error) {
 	var (
 		fdst     fauxfile.File
 		src      string
@@ -394,6 +388,7 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 		parser   *markdown.Parser
 		tmpl     *template.Template
 		names    []string
+		fmap     *template.FuncMap
 	)
 	if postpath, err = post.Path(); err != nil {
 		return
@@ -421,6 +416,21 @@ func (gw *GhostWriter) renderPost(post *Post, fmap *template.FuncMap) (err error
 			d := filepath.Join(gw.args.dst, postpath, name)
 			gw.copyFile(s, d)
 		}
+	}
+
+	fmap = &template.FuncMap{
+		"link": func(i string) string {
+			var (
+				locali string
+				link   string
+				ok     bool
+			)
+			locali = fmt.Sprintf("%v/%v", post.Id, i)
+			if link, ok = gw.links[locali]; ok {
+				return link
+			}
+			return gw.links[i]
+		},
 	}
 
 	// Render post body against links map.
