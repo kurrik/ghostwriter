@@ -96,6 +96,9 @@ func (gw *GhostWriter) Process() (err error) {
 	if err = gw.parsePosts(); err != nil {
 		return
 	}
+	if err = gw.renderPosts(); err != nil {
+		return
+	}
 	if err = gw.renderMisc(); err != nil {
 		return
 	}
@@ -191,11 +194,6 @@ func (gw *GhostWriter) parsePosts() (err error) {
 		gw.links[id] = p
 		for _, l := range lnames {
 			gw.links[filepath.Join(id, l)] = filepath.Join(p, l)
-		}
-	}
-	for id, post = range gw.site.Posts {
-		if err = gw.renderPost(post); err != nil {
-			return err
 		}
 	}
 	return
@@ -369,6 +367,19 @@ func (gw *GhostWriter) renderMisc() (err error) {
 					return
 				}
 			}
+		}
+	}
+	return
+}
+
+// Renders all of the posts in the site.
+func (gw *GhostWriter) renderPosts() (err error) {
+	var (
+		post *Post
+	)
+	for _, post = range gw.site.Posts {
+		if err = gw.renderPost(post); err != nil {
+			return
 		}
 	}
 	return
