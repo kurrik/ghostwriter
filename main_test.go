@@ -106,7 +106,8 @@ const SITE_META = `
 title: Test blog
 root: http://www.example.com
 pathformat: /{{.DatePath}}/{{.Slug}}
-dateformat: "2006-01-02"`
+dateformat: "2006-01-02"
+tagsformat: /tags/{{.Tag}}`
 
 const POST_1_META = `
 date: 2012-09-07
@@ -125,7 +126,9 @@ This is markdown
 const POST_2_META = `
 date: 2012-09-09
 slug: hello-again
-title: Hello Again!`
+title: Hello Again!
+tags:
+  - hello`
 
 const POST_2_MD = `
 This is a <a href="{{link "01-test"}}">link</a> to a post.
@@ -145,6 +148,54 @@ const SITE_TMPL = `
   <title>{{.Site.Title}}</title>
 {{end}}
 {{define "body"}}{{end}}`
+
+const TAGS_TMPL = `
+{{define "body"}}
+  <h1>Posts tagged with {{.Tag}}</h1>
+  {{range .Posts}}
+    <h2>{{.Title}}</h2>
+    <div>{{.Body}}</div>
+  {{end}}
+{{end}}`
+
+const TAG_HELLO_HTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test blog</title>
+  </head>
+  <body>
+    <h1>Posts tagged with hello</h1>
+    <h2>Hello Again!</h2>
+    <div>
+      <p>
+        This is a <a href="/2012-09-07/hello-world">link</a> to a post.
+        <img src="/2012-09-07/hello-world/img.png" />
+      </p>
+    </div>
+    <h2>Hello World!</h2>
+    <div>
+      <p>This is a fake post, for testing.</p>
+      <h2>This is markdown</h2>
+    </div>
+  </body>
+</html>`
+
+const TAG_WORLD_HTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test blog</title>
+  </head>
+  <body>
+    <h1>Posts tagged with world</h1>
+    <h2>Hello World!</h2>
+    <div>
+      <p>This is a fake post, for testing.</p>
+      <h2>This is markdown</h2>
+    </div>
+  </body>
+</html>`
 
 const POST_TMPL = `
 {{define "head"}}
@@ -314,6 +365,7 @@ func TestProcess(t *testing.T) {
 	WriteFile(fs, "src/config.yaml", SITE_META)
 	WriteFile(fs, "src/templates/root.tmpl", SITE_TMPL)
 	WriteFile(fs, "src/templates/post.tmpl", POST_TMPL)
+	WriteFile(fs, "src/templates/tags.tmpl", TAGS_TMPL)
 	WriteFile(fs, "src/posts/01-test/body.md", POST_1_MD)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_1_META)
 	WriteFile(fs, "src/posts/01-test/img.png", "")
@@ -326,4 +378,6 @@ func TestProcess(t *testing.T) {
 	LooseCompareFile(t, fs, "build/index.html", INDEX_HTML)
 	LooseCompareFile(t, fs, "build/2012-09-07/hello-world/index.html", POST_1_HTML)
 	LooseCompareFile(t, fs, "build/2012-09-09/hello-again/index.html", POST_2_HTML)
+	LooseCompareFile(t, fs, "build/tags/hello/index.html", TAG_HELLO_HTML)
+	LooseCompareFile(t, fs, "build/tags/world/index.html", TAG_WORLD_HTML)
 }

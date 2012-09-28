@@ -43,6 +43,7 @@ type Args struct {
 	static       string
 	config       string
 	postTemplate string
+	tagsTemplate string
 }
 
 func DefaultArgs() *Args {
@@ -54,6 +55,7 @@ func DefaultArgs() *Args {
 		static:       "static",
 		config:       "config.yaml",
 		postTemplate: "post.tmpl",
+		tagsTemplate: "tags.tmpl",
 	}
 }
 
@@ -66,6 +68,7 @@ type GhostWriter struct {
 	links        map[string]string
 	rootTemplate *template.Template
 	postTemplate *template.Template
+	tagsTemplate *template.Template
 }
 
 // Creates a new GhostWriter.
@@ -77,6 +80,7 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 		links: make(map[string]string),
 		site: &Site{
 			Posts: make(map[string]*Post),
+			Tags:  make(map[string]Posts),
 		},
 	}
 	return gw
@@ -97,6 +101,9 @@ func (gw *GhostWriter) Process() (err error) {
 		return
 	}
 	if err = gw.renderPosts(); err != nil {
+		return
+	}
+	if err = gw.renderTags(); err != nil {
 		return
 	}
 	if err = gw.renderMisc(); err != nil {
@@ -195,6 +202,9 @@ func (gw *GhostWriter) parsePosts() (err error) {
 		for _, l := range lnames {
 			gw.links[filepath.Join(id, l)] = filepath.Join(p, l)
 		}
+		for _, tag := range post.Tags() {
+			gw.site.Tags[tag] = append(gw.site.Tags[tag], post)
+		}
 	}
 	return
 }
@@ -210,12 +220,13 @@ func (gw *GhostWriter) parseSiteMeta() (err error) {
 // Parses root templates from the given template path.
 func (gw *GhostWriter) parseTemplates() (err error) {
 	var (
-		src       = filepath.Join(gw.args.src, gw.args.templates)
+		src       string = filepath.Join(gw.args.src, gw.args.templates)
 		names     []string
 		id        string
 		text      string
-		foundPost bool
-		foundRoot bool
+		foundPost bool = false
+		foundRoot bool = false
+		foundTags bool = false
 	)
 	gw.rootTemplate = template.New("root")
 	if names, err = gw.readDir(src); err != nil {
@@ -223,8 +234,6 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		// Fail silently
 		return nil
 	}
-	foundPost = false
-	foundRoot = false
 	for _, n := range names {
 		if text, err = gw.readFile(filepath.Join(src, n)); err != nil {
 			return
@@ -235,6 +244,11 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 			gw.postTemplate = template.New("post")
 			_, err = gw.postTemplate.Parse(text)
 			gw.log.Printf("Parsed post template with name %v\n", id)
+		} else if n == gw.args.tagsTemplate {
+			foundTags = true
+			gw.tagsTemplate = template.New("tags")
+			_, err = gw.tagsTemplate.Parse(text)
+			gw.log.Printf("Parsed tags template with name %v\n", id)
 		} else {
 			foundRoot = true
 			_, err = gw.rootTemplate.Parse(text)
@@ -257,6 +271,9 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 	}
 	if foundPost == false {
 		err = fmt.Errorf("No post template at: %v", gw.args.postTemplate)
+	}
+	if foundTags == false {
+		// Not an error
 	}
 	return
 }
@@ -474,6 +491,48 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 	return
 }
 
+// Renders all of the posts in the site.
+func (gw *GhostWriter) renderTags() (err error) {
+	var (
+		posts   Posts
+		tag     string
+		dst     string
+		tagpath string
+		tmpl    *template.Template
+		writer  *bufio.Writer
+		fdst    fauxfile.File
+	)
+	if gw.tagsTemplate == nil {
+		return
+	}
+	if tmpl, err = gw.mergeTemplate(gw.tagsTemplate); err != nil {
+		return
+	}
+	for tag, posts = range gw.site.Tags {
+		tagpath = gw.site.TagPath(tag)
+		dst = path.Join(gw.args.dst, tagpath, "index.html")
+		gw.fs.MkdirAll(path.Dir(dst), 0755)
+		if fdst, err = gw.fs.Create(dst); err != nil {
+			return
+		}
+		defer fdst.Close()
+		writer = bufio.NewWriter(fdst)
+		sort.Sort(ByDateDesc{posts})
+		data := map[string]interface{}{
+			"Tag":   tag,
+			"Posts": posts,
+			"Site":  gw.site,
+		}
+		err = tmpl.Execute(writer, data)
+		writer.Flush()
+		if err != nil {
+			return
+		}
+		fdst.Close()
+	}
+	return
+}
+
 // Renders a Go template from the given path to the output path.
 func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 	var (
@@ -593,6 +652,12 @@ func (p *Post) Permalink() (s string) {
 	return
 }
 
+// Returns the names of the tags this post belongs to.
+func (p *Post) Tags() (t []string) {
+	t = p.meta.Tags
+	return
+}
+
 // Returns the fully-qualified link for the post as a url.URL object.
 func (p *Post) URL() (u *url.URL, err error) {
 	var postpath string
@@ -615,6 +680,31 @@ type Site struct {
 	Posts        map[string]*Post
 	meta         *SiteMeta
 	pathTemplate *template.Template
+	tagsTemplate *template.Template
+	Tags         map[string]Posts
+}
+
+// Returns the path for a given tag
+func (s *Site) TagPath(tag string) string {
+	var (
+		err error
+		b   *bytes.Buffer
+		d   map[string]interface{}
+	)
+	if s.tagsTemplate == nil {
+		s.tagsTemplate, err = template.New("tags").Parse(s.meta.TagsFormat)
+		if err != nil {
+			panic("Could not parse tags format")
+		}
+	}
+	b = bytes.NewBufferString("")
+	d = map[string]interface{}{
+		"Tag": tag,
+	}
+	if err = s.tagsTemplate.Execute(b, d); err != nil {
+		panic(fmt.Sprintf("Could not get path for tag %v", tag))
+	}
+	return b.String()
 }
 
 // Returns the title of the site.
@@ -684,6 +774,7 @@ type SiteMeta struct {
 	Root       string
 	PathFormat string
 	DateFormat string
+	TagsFormat string
 }
 
 // Main routine.
