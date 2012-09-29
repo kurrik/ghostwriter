@@ -423,6 +423,22 @@ func TestPostWithMissingBodyIsValid(t *testing.T) {
 	LooseCompareFile(t, fs, "build/2012-09-07/hello-world/index.html", POST_1_EMPTY_HTML)
 }
 
+// Ensures that files in the posts directory are not treated as post dirs.
+func TestFileInPostsDirNotTreatedAsPostDirectory(t *testing.T) {
+	var (
+		err error
+	)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/post.tmpl", "")
+	WriteFile(fs, "src/posts/01-test/body.md", "")
+	WriteFile(fs, "src/posts/01-test/meta.yaml", "")
+	WriteFile(fs, "src/posts/junk.yaml", "")
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+}
+
 // Ensures a complex site is rendered
 func TestProcess(t *testing.T) {
 	gw, fs := Setup()

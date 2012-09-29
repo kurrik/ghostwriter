@@ -179,6 +179,9 @@ func (gw *GhostWriter) parsePosts() (err error) {
 		return nil
 	}
 	for _, id = range names {
+		if !gw.isDir(filepath.Join(src, id)) {
+			continue
+		}
 		msrc = filepath.Join(name, id, "meta.yaml")
 		if post, ok = gw.site.Posts[id]; ok == false {
 			post = &Post{
