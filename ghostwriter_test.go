@@ -375,6 +375,23 @@ func TestPostWithEmptyDirDoesNotRaiseError(t *testing.T) {
 	}
 }
 
+func TestPostWithEmptyMetaIsNotParsed(t *testing.T) {
+	var (
+		err error
+	)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/post.tmpl", "")
+	WriteFile(fs, "src/posts/01-test/body.md", "")
+	WriteFile(fs, "src/posts/01-test/meta.yaml", "")
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if _, ok := gw.site.Posts["01-test"]; ok {
+		t.Fatalf("Empty meta should not parse into a post")
+	}
+}
+
 // Ensures a complex site is rendered
 func TestProcess(t *testing.T) {
 	gw, fs := Setup()

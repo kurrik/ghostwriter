@@ -131,7 +131,21 @@ func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
 	src := filepath.Join(gw.args.src, path)
 	gw.log.Printf("Parsing site meta %v\n", src)
 	meta = &PostMeta{}
-	err = gw.unyaml(src, meta)
+	if err = gw.unyaml(src, meta); err != nil {
+		return
+	}
+	if meta.Date == "" {
+		err = fmt.Errorf("Post meta must include date")
+		return
+	}
+	if meta.Slug == "" {
+		err = fmt.Errorf("Post meta must include slug")
+		return
+	}
+	if meta.Title == "" {
+		err = fmt.Errorf("Post meta must include title")
+		return
+	}
 	return
 }
 
