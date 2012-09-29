@@ -110,6 +110,18 @@ func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 	return
 }
 
+// Returns true if the specified path is a directory.
+func (gw *GhostWriter) isDir(path string) bool {
+	var (
+		info os.FileInfo
+		err  error
+	)
+	if info, err = gw.fs.Stat(path); err != nil {
+		return false
+	}
+	return info.IsDir()
+}
+
 // Returns a copy of the global template with the supplied template merged in.
 func (gw *GhostWriter) mergeTemplate(t *template.Template) (out *template.Template, err error) {
 	if out, err = gw.rootTemplate.Clone(); err != nil {
