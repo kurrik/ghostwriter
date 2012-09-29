@@ -29,6 +29,7 @@ Run:
 
     go get launchpad.net/goyaml
     go get github.com/knieriem/markdown
+    go get github.com/howeyc/fsnotify
     go get github.com/kurrik/fauxfile
 
 The goyaml library will show some warnings when compiling but it appears to have
