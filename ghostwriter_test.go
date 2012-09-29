@@ -223,6 +223,20 @@ const POST_1_HTML = `
   </body>
 </html>`
 
+const POST_1_EMPTY_HTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test blog - Hello World!</title>
+    <link rel="canonical" href="http://www.example.com/2012-09-07/hello-world" />
+  </head>
+  <body>
+    <h1>Hello World!</h1>
+    <div>
+    </div>
+  </body>
+</html>`
+
 const POST_2_HTML = `
 <!DOCTYPE html>
 <html>
@@ -375,6 +389,7 @@ func TestPostWithEmptyDirDoesNotRaiseError(t *testing.T) {
 	}
 }
 
+// Ensures that empty meta files don't raise errors.
 func TestPostWithEmptyMetaIsNotParsed(t *testing.T) {
 	var (
 		err error
@@ -390,6 +405,22 @@ func TestPostWithEmptyMetaIsNotParsed(t *testing.T) {
 	if _, ok := gw.site.Posts["01-test"]; ok {
 		t.Fatalf("Empty meta should not parse into a post")
 	}
+}
+
+// Ensures that missing bodies don't raise errors.
+func TestPostWithMissingBodyIsValid(t *testing.T) {
+	var (
+		err error
+	)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/root.tmpl", SITE_TMPL)
+	WriteFile(fs, "src/templates/post.tmpl", POST_TMPL)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_1_META)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	LooseCompareFile(t, fs, "build/2012-09-07/hello-world/index.html", POST_1_EMPTY_HTML)
 }
 
 // Ensures a complex site is rendered

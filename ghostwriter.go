@@ -415,7 +415,9 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 	src = filepath.Join(post.SrcDir, "body.md")
 	dst = path.Join(gw.args.dst, postpath, "index.html")
 	if postbody, err = gw.readFile(src); err != nil {
-		return
+		// A missing body is not an error, just assume a blank entry.
+		postbody = ""
+		err = nil
 	}
 	gw.fs.MkdirAll(path.Dir(dst), 0755)
 	if fdst, err = gw.fs.Create(dst); err != nil {
