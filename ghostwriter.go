@@ -177,6 +177,7 @@ func (gw *GhostWriter) parsePosts() (err error) {
 		}
 		if post.meta, err = gw.parsePostMeta(msrc); err != nil {
 			// Not a post, but don't raise an error.
+			gw.log.Printf("Invalid post at %v: %v\n", msrc, err)
 			return nil
 		}
 		// Add to site posts after determining whether it's a real post.
