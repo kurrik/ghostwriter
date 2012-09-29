@@ -160,11 +160,13 @@ func (gw *GhostWriter) parsePosts() (err error) {
 				SrcDir: filepath.Join(src, id),
 				site:   gw.site,
 			}
-			gw.site.Posts[id] = post
 		}
 		if post.meta, err = gw.parsePostMeta(msrc); err != nil {
-			return
+			// Not a post, but don't raise an error.
+			return nil
 		}
+		// Add to site posts after determining whether it's a real post.
+		gw.site.Posts[id] = post
 		if lnames, err = gw.readDir(filepath.Join(src, id)); err != nil {
 			return
 		}

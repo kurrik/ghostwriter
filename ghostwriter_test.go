@@ -359,6 +359,22 @@ func TestPostContentCopied(t *testing.T) {
 	}
 }
 
+// Ensures that empty post dirs don't raise errors.
+func TestPostWithEmptyDirDoesNotRaiseError(t *testing.T) {
+	var (
+		err error
+	)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/post.tmpl", "")
+	WriteFile(fs, "src/posts/01-test/body.md", "")
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_1_META)
+	fs.MkdirAll("src/posts/02-test", 0755)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+}
+
 // Ensures a complex site is rendered
 func TestProcess(t *testing.T) {
 	gw, fs := Setup()
