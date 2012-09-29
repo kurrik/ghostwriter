@@ -698,7 +698,7 @@ func (s *Site) RecentPosts() Posts {
 	return p
 }
 
-// A list of psots.
+// A list of posts.
 type Posts []*Post
 
 // Returns the length of the list.
