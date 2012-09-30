@@ -51,17 +51,17 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 		args:  args,
 		fs:    fs,
 		log:   log.New(os.Stderr, "", log.LstdFlags),
-		links: make(map[string]string),
-		site: &Site{
-			Posts: make(map[string]*Post),
-			Tags:  make(map[string]Posts),
-		},
 	}
 	return gw
 }
 
 // Parses the src directory, rendering into dst as needed.
 func (gw *GhostWriter) Process() (err error) {
+	gw.links = make(map[string]string)
+	gw.site = &Site{
+		Posts: make(map[string]*Post),
+		Tags:  make(map[string]Posts),
+	}
 	if err = gw.fs.MkdirAll(gw.args.dst, 0755); err != nil {
 		return
 	}
@@ -141,7 +141,7 @@ func (gw *GhostWriter) mergeTemplate(t *template.Template) (out *template.Templa
 // Returns a pointer to a populated PostMeta object or an error if it failed.
 func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
 	src := filepath.Join(gw.args.src, path)
-	gw.log.Printf("Parsing site meta %v\n", src)
+	gw.log.Printf("Parsing post meta %v\n", src)
 	meta = &PostMeta{}
 	if err = gw.unyaml(src, meta); err != nil {
 		return

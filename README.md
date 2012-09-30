@@ -5,11 +5,12 @@ all myself.
 
 Status
 ------
-Still really rough.  I'll update once I'm using this for actual projects.
+Starting to actually be a thing!
+I'll update once I'm using this for actual projects.
 Currently building the example site under `testsite`.  Run:
 
     $ cd testsite
-    $ go run ../main.go
+    $ go run ../*.go --watch
 
 You can serve the output with:
 
@@ -17,7 +18,10 @@ You can serve the output with:
     $ python -m SimpleHTTPServer
 
 Which will host the rendered site at http://localhost:8000
-Note that you'll need to re-run Ghostwriter if you make source changes.
+
+Note that the `--watch` flag will re-run Ghostwriter if it picks up filesystem
+changes.  So editing a site is as easy as changing the source directory and
+reloading the page in your browser.
 
 Dependencies
 ------------
