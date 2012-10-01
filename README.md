@@ -12,16 +12,18 @@ Currently building the example site under `testsite`.  Run:
     $ cd testsite
     $ go run ../*.go --watch
 
-You can serve the output with:
-
-    $ cd testsite/dst
-    $ python -m SimpleHTTPServer
-
-Which will host the rendered site at http://localhost:8000
-
 Note that the `--watch` flag will re-run Ghostwriter if it picks up filesystem
 changes.  So editing a site is as easy as changing the source directory and
 reloading the page in your browser.
+
+You can serve the output with:
+
+    $ go run ../*.go --watch --serve=:8080
+
+Which will host the rendered site at http://localhost:8080.  The value you
+pass to the `--server` flag will be forwarded to
+http://golang.org/pkg/net/http/#Server so anything that function accepts
+should work.
 
 Dependencies
 ------------
