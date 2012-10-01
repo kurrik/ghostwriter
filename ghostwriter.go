@@ -51,6 +51,11 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 		args:  args,
 		fs:    fs,
 		log:   log.New(os.Stderr, "", log.LstdFlags),
+		links: make(map[string]string),
+		site: &Site{
+			Posts: make(map[string]*Post),
+			Tags:  make(map[string]Posts),
+		},
 	}
 	return gw
 }
