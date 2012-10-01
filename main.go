@@ -25,6 +25,7 @@ import (
 type Args struct {
 	src          string
 	dst          string
+	addr         string
 	posts        string
 	templates    string
 	static       string
@@ -57,9 +58,17 @@ func main() {
 	a := DefaultArgs()
 	flag.StringVar(&a.src, "src", "src", "Path to src files.")
 	flag.StringVar(&a.dst, "dst", "dst", "Build output directory.")
+	flag.StringVar(&a.addr, "serve", "", "Serve at this address. Eg: ':80'")
 	flag.BoolVar(&watch, "watch", false, "Keep watching the source dir?")
 	flag.Parse()
 	gw = NewGhostWriter(&fauxfile.RealFilesystem{}, a)
+	if a.addr != "" {
+		go func() {
+			if err := Serve(gw); err != nil {
+				fmt.Println(err)
+			}
+		}()
+	}
 	if watch {
 		err = Watch(gw, a.src)
 	} else {
