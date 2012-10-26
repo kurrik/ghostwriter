@@ -129,6 +129,12 @@ func (gw *GhostWriter) isDir(path string) bool {
 
 // Returns a copy of the global template with the supplied template merged in.
 func (gw *GhostWriter) mergeTemplate(t *template.Template) (out *template.Template, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			// Seems to be a bug with cloning empty templates.
+			err = fmt.Errorf("Problem cloning template: %v", r)
+		}
+	}()
 	if out, err = gw.rootTemplate.Clone(); err != nil {
 		return
 	}
