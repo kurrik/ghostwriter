@@ -34,7 +34,7 @@ Make sure you have bazaar installed.  In Ubuntu:
 Run:
 
     go get launchpad.net/goyaml
-    go get github.com/knieriem/markdown
+    go get github.com/russross/blackfriday
     go get github.com/howeyc/fsnotify
     go get github.com/kurrik/fauxfile
 

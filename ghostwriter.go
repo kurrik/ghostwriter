@@ -18,7 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/knieriem/markdown"
+	"github.com/russross/blackfriday"
 	"github.com/kurrik/fauxfile"
 	"io"
 	"launchpad.net/goyaml"
@@ -428,9 +428,7 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		postpath string
 		postbody string
 		body     *bytes.Buffer
-		mdbody   *bytes.Buffer
 		writer   *bufio.Writer
-		parser   *markdown.Parser
 		tmpl     *template.Template
 		names    []string
 		fmap     *template.FuncMap
@@ -491,10 +489,7 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 	}
 
 	// Render markdown
-	mdbody = new(bytes.Buffer)
-	parser = markdown.NewParser(&markdown.Extensions{Smart: true})
-	parser.Markdown(body, markdown.ToHTML(mdbody))
-	post.Body = mdbody.String()
+	post.Body = string(blackfriday.MarkdownCommon(body.Bytes()))
 
 	// Render post into site template.
 	writer = bufio.NewWriter(fdst)
