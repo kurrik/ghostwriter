@@ -439,18 +439,6 @@ func TestFileInPostsDirNotTreatedAsPostDirectory(t *testing.T) {
 	}
 }
 
-func TestContentWithNoTemplatesDoesNotPanic(t *testing.T) {
-	var (
-		err error
-	)
-	gw, fs := Setup()
-	WriteFile(fs, "src/config.yaml", SITE_META)
-	WriteFile(fs, "src/index.tmpl", INDEX_TMPL)
-	if err = gw.Process(); err == nil {
-		t.Fatalf("Expected error without template")
-	}
-}
-
 // Ensures a complex site is rendered
 func TestProcess(t *testing.T) {
 	gw, fs := Setup()
