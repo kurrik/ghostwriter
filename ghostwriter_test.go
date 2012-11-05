@@ -107,7 +107,8 @@ title: Test blog
 root: http://www.example.com
 pathformat: /{{.DatePath}}/{{.Slug}}
 dateformat: "2006-01-02"
-tagsformat: /tags/{{.Tag}}`
+tagsformat: /tags/{{.Tag}}
+recentcount: 5`
 
 const POST_1_META = `
 date: 2012-09-07

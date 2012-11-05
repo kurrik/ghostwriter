@@ -18,8 +18,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/russross/blackfriday"
 	"github.com/kurrik/fauxfile"
+	"github.com/russross/blackfriday"
 	"io"
 	"launchpad.net/goyaml"
 	"log"
@@ -732,10 +732,20 @@ func (s *Site) Root() string {
 }
 
 // Returns the posts of the site in desending chronological order.
-func (s *Site) RecentPosts() Posts {
+func (s *Site) PostsByDate() Posts {
 	p := PostsFromMap(s.Posts)
 	sort.Sort(ByDateDesc{p})
 	return p
+}
+
+// Returns the first N of the posts by date.
+func (s *Site) RecentPosts() Posts {
+	p := s.PostsByDate()
+	lim := len(p)
+	if s.meta.RecentCount < lim {
+		lim = s.meta.RecentCount
+	}
+	return s.PostsByDate()[0:lim]
 }
 
 // A list of posts.
@@ -784,9 +794,10 @@ func (s *Site) PathTemplate() (t *template.Template, err error) {
 
 // Serializable metadata about the site.
 type SiteMeta struct {
-	Title      string
-	Root       string
-	PathFormat string
-	DateFormat string
-	TagsFormat string
+	Title       string
+	Root        string
+	PathFormat  string
+	DateFormat  string
+	TagsFormat  string
+	RecentCount int
 }
