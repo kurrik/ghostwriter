@@ -639,7 +639,7 @@ func (p *Post) DatePath() (s string) {
 
 // Returns the human-friendly date of this post.
 func (p *Post) FormattedDate() (s string) {
-	s = p.SureDate().Format("Mon Jan _2 15:04:05 MST 2006")
+	s = p.SureDate().Format("Mon Jan _2, 2006")
 	return
 }
 
