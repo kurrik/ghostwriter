@@ -133,7 +133,11 @@ tags:
 
 const POST_2_MD = `
 This is a <a href="{{link "01-test"}}">link</a> to a post.
-<img src="{{link "01-test/img.png"}}" />`
+<img src="{{link "01-test/img.png"}}" />
+
+<!--BREAK-->
+
+This is content after the break`
 
 const SITE_TMPL = `
 <!DOCTYPE html>
@@ -155,7 +159,7 @@ const TAGS_TMPL = `
   <h1>Posts tagged with {{.Tag}}</h1>
   {{range .Posts}}
     <h2>{{.Title}}</h2>
-    <div>{{.Body}}</div>
+    <div>{{.Snippet}}</div>
   {{end}}
 {{end}}`
 
@@ -176,8 +180,6 @@ const TAG_HELLO_HTML = `
     </div>
     <h2>Hello World!</h2>
     <div>
-      <p>This is a fake post, for testing.</p>
-      <h2>This is markdown</h2>
     </div>
   </body>
 </html>`
@@ -192,8 +194,6 @@ const TAG_WORLD_HTML = `
     <h1>Posts tagged with world</h1>
     <h2>Hello World!</h2>
     <div>
-      <p>This is a fake post, for testing.</p>
-      <h2>This is markdown</h2>
     </div>
   </body>
 </html>`
@@ -252,6 +252,8 @@ const POST_2_HTML = `
         This is a <a href="/2012-09-07/hello-world">link</a> to a post.
         <img src="/2012-09-07/hello-world/img.png" />
       </p>
+      <!--BREAK-->
+      <p>This is content after the break</p>
     </div>
   </body>
 </html>`
@@ -279,6 +281,8 @@ const INDEX_HTML = `
        This is a <a href="/2012-09-07/hello-world">link</a> to a post.
        <img src="/2012-09-07/hello-world/img.png" />
       </p>
+      <!--BREAK-->
+      <p>This is content after the break</p>
     </div>
     <h2>Hello World!</h2>
     <div>

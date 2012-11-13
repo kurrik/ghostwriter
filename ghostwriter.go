@@ -432,6 +432,7 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		tmpl     *template.Template
 		names    []string
 		fmap     *template.FuncMap
+		index    int
 	)
 	if postpath, err = post.Path(); err != nil {
 		return
@@ -490,6 +491,11 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 
 	// Render markdown
 	post.Body = string(blackfriday.MarkdownCommon(body.Bytes()))
+
+	// Check for snippet
+	if index = strings.Index(post.Body, "<!--BREAK-->"); index != -1 {
+		post.Snippet = post.Body[0:index]
+	}
 
 	// Render post into site template.
 	writer = bufio.NewWriter(fdst)
@@ -602,11 +608,12 @@ func (gw *GhostWriter) unyaml(path string, out interface{}) (err error) {
 
 // Represents a post for templating purposes.
 type Post struct {
-	Id     string
-	Body   string
-	SrcDir string
-	meta   *PostMeta
-	site   *Site
+	Id      string
+	Body    string
+	Snippet string
+	SrcDir  string
+	meta    *PostMeta
+	site    *Site
 }
 
 // Returns the date of the post, as configured in the post metadata.
