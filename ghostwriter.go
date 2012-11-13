@@ -637,6 +637,12 @@ func (p *Post) DatePath() (s string) {
 	return t.Format(p.site.meta.DateFormat)
 }
 
+// Returns the human-friendly date of this post.
+func (p *Post) FormattedDate (s string) {
+	s = p.SureDate().Format("Mon Jan _2 15:04:05 MST 2006")
+	return
+}
+
 // Returns the URL-friendly identifier for the post.
 func (p *Post) Slug() (s string) {
 	s = strings.ToLower(p.meta.Slug)
