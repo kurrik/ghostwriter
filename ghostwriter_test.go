@@ -206,6 +206,8 @@ const POST_TMPL = `
 {{define "body"}}
   <h1>{{.Post.Title}}</h1>
   <div>{{.Post.Body}}</div>
+  {{if .Post.Next}}<a href="{{.Post.Next.Path}}">Next Post</a>{{end}}
+  {{if .Post.Prev}}<a href="{{.Post.Prev.Path}}">Prev Post</a>{{end}}
 {{end}}`
 
 const POST_1_HTML = `
@@ -221,6 +223,7 @@ const POST_1_HTML = `
       <p>This is a fake post, for testing.</p>
       <h2>This is markdown</h2>
     </div>
+    <a href="/2012-09-09/hello-again">Next Post</a>
   </body>
 </html>`
 
@@ -255,6 +258,7 @@ const POST_2_HTML = `
       <!--BREAK-->
       <p>This is content after the break</p>
     </div>
+    <a href="/2012-09-07/hello-world">Prev Post</a>
   </body>
 </html>`
 

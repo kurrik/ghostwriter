@@ -694,6 +694,16 @@ func (p *Post) URL() (u *url.URL, err error) {
 	return url.Parse(path.Join(p.site.meta.Root, postpath))
 }
 
+// Returns the next post, chronologically.
+func (p *Post) Next() *Post {
+	return p.site.NextPost(p)
+}
+
+// Returns the previous post, chronologically.
+func (p *Post) Prev() *Post {
+	return p.site.PrevPost(p)
+}
+
 // Serializable metadata about the post.
 type PostMeta struct {
 	Tags  []string
@@ -759,6 +769,39 @@ func (s *Site) RecentPosts() Posts {
 		lim = s.meta.RecentCount
 	}
 	return s.PostsByDate()[0:lim]
+}
+
+// Returns the index of the given post in the given list of posts
+func (s *Site) postIndex(posts Posts, p *Post) int {
+	if p == nil {
+		return -1
+	}
+	for i, post := range posts {
+		if post == p {
+			return i
+		}
+	}
+	return -1
+}
+
+// Returns the next post chronologically given a reference post.
+func (s *Site) NextPost(p *Post) *Post {
+	posts := s.PostsByDate()
+	i := s.postIndex(posts, p)
+	if i > 0 {
+		return posts[i-1]
+	}
+	return nil
+}
+
+// Returns the previous post chronologically given a reference post.
+func (s *Site) PrevPost(p *Post) *Post {
+	posts := s.PostsByDate()
+	i := s.postIndex(posts, p)
+	if i != -1 && i < len(posts) - 1 {
+		return posts[i+1]
+	}
+	return nil
 }
 
 // A list of posts.
