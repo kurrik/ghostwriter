@@ -246,6 +246,7 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		foundPost bool = false
 		foundRoot bool = false
 		foundTags bool = false
+		fmap      *template.FuncMap
 	)
 	gw.rootTemplate = template.New("root")
 	if names, err = gw.readDir(src); err != nil {
@@ -253,6 +254,7 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		// Fail silently
 		return nil
 	}
+	fmap = gw.getFuncMap()
 	for _, n := range names {
 		if text, err = gw.readFile(filepath.Join(src, n)); err != nil {
 			return
@@ -261,16 +263,16 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 		if n == gw.args.postTemplate {
 			foundPost = true
 			gw.postTemplate = template.New("post")
-			_, err = gw.postTemplate.Parse(text)
+			_, err = gw.postTemplate.Funcs(*fmap).Parse(text)
 			gw.log.Printf("Parsed post template with name %v\n", id)
 		} else if n == gw.args.tagsTemplate {
 			foundTags = true
 			gw.tagsTemplate = template.New("tags")
-			_, err = gw.tagsTemplate.Parse(text)
+			_, err = gw.tagsTemplate.Funcs(*fmap).Parse(text)
 			gw.log.Printf("Parsed tags template with name %v\n", id)
 		} else {
 			foundRoot = true
-			_, err = gw.rootTemplate.Parse(text)
+			_, err = gw.rootTemplate.Funcs(*fmap).Parse(text)
 			gw.log.Printf("Parsed root template with name %v\n", id)
 		}
 		if err != nil {
@@ -424,6 +426,15 @@ func (gw *GhostWriter) renderPosts() (err error) {
 	return
 }
 
+// Returns a base set of functions for use in templates.
+func (gw *GhostWriter) getFuncMap() *template.FuncMap {
+	return &template.FuncMap{
+		"timeformat": func(t time.Time, f string) string {
+			return t.Format(f)
+		},
+	}
+}
+
 // Renders the initalized Post object into an HTML file in the destination.
 func (gw *GhostWriter) renderPost(post *Post) (err error) {
 	var (
@@ -469,19 +480,18 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		}
 	}
 
-	fmap = &template.FuncMap{
-		"link": func(i string) string {
-			var (
-				locali string
-				link   string
-				ok     bool
-			)
-			locali = fmt.Sprintf("%v/%v", post.Id, i)
-			if link, ok = gw.links[locali]; ok {
-				return link
-			}
-			return gw.links[i]
-		},
+	fmap = gw.getFuncMap()
+	(*fmap)["link"] = func(i string) string {
+		var (
+			locali string
+			link   string
+			ok     bool
+		)
+		locali = fmt.Sprintf("%v/%v", post.Id, i)
+		if link, ok = gw.links[locali]; ok {
+			return link
+		}
+		return gw.links[i]
 	}
 
 	// Render post body against links map.
@@ -571,11 +581,7 @@ func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 	if text, err = gw.readFile(src); err != nil {
 		return
 	}
-	fmap := &template.FuncMap{
-		"timeformat": func(t time.Time, f string) string {
-			return t.Format(f)
-		},
-	}
+	fmap := gw.getFuncMap()
 	if tmpl, err = template.New(src).Funcs(*fmap).Parse(text); err != nil {
 		return
 	}

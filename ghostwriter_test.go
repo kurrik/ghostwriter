@@ -159,6 +159,7 @@ const TAGS_TMPL = `
   <h1>Posts tagged with {{.Tag}}</h1>
   {{range .Posts}}
     <h2>{{.Title}}</h2>
+    <div>Updated on {{timeformat .SureDate "2006-01-02T15:04:05Z07:00"}}</div>
     <div>{{.Snippet}}</div>
   {{end}}
 {{end}}`
@@ -172,6 +173,7 @@ const TAG_HELLO_HTML = `
   <body>
     <h1>Posts tagged with hello</h1>
     <h2>Hello Again!</h2>
+    <div>Updated on 2012-09-09T00:00:00Z</div>
     <div>
       <p>
         This is a <a href="/2012-09-07/hello-world">link</a> to a post.
@@ -179,6 +181,7 @@ const TAG_HELLO_HTML = `
       </p>
     </div>
     <h2>Hello World!</h2>
+    <div>Updated on 2012-09-07T00:00:00Z</div>
     <div>
     </div>
   </body>
@@ -193,6 +196,7 @@ const TAG_WORLD_HTML = `
   <body>
     <h1>Posts tagged with world</h1>
     <h2>Hello World!</h2>
+    <div>Updated on 2012-09-07T00:00:00Z</div>
     <div>
     </div>
   </body>
