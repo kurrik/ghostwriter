@@ -798,7 +798,7 @@ func (s *Site) NextPost(p *Post) *Post {
 func (s *Site) PrevPost(p *Post) *Post {
 	posts := s.PostsByDate()
 	i := s.postIndex(posts, p)
-	if i != -1 && i < len(posts) - 1 {
+	if i != -1 && i < len(posts)-1 {
 		return posts[i+1]
 	}
 	return nil
@@ -833,7 +833,12 @@ type ByDateDesc struct{ Posts }
 
 // Compares two posts.
 func (p ByDateDesc) Less(i int, j int) bool {
-	return p.Posts[i].SureDate().After(p.Posts[j].SureDate())
+	di := p.Posts[i].SureDate()
+	dj := p.Posts[j].SureDate()
+	if di.Equal(dj) {
+		return p.Posts[i].Id > p.Posts[j].Id
+	}
+	return di.After(dj)
 }
 
 // Returns a template suitable for rendering post URLs.
