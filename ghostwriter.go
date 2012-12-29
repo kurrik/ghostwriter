@@ -571,7 +571,12 @@ func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 	if text, err = gw.readFile(src); err != nil {
 		return
 	}
-	if tmpl, err = template.New(src).Parse(text); err != nil {
+	fmap := &template.FuncMap{
+		"timeformat": func(t time.Time, f string) string {
+			return t.Format(f)
+		},
+	}
+	if tmpl, err = template.New(src).Funcs(*fmap).Parse(text); err != nil {
 		return
 	}
 	if clone, err = gw.mergeTemplate(tmpl); err != nil {
