@@ -53,8 +53,9 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 		log:   log.New(os.Stderr, "", log.LstdFlags),
 		links: make(map[string]string),
 		site: &Site{
-			Posts: make(map[string]*Post),
-			Tags:  make(map[string]Posts),
+			Posts:    make(map[string]*Post),
+			Tags:     make(map[string]Posts),
+			Rendered: time.Now(),
 		},
 	}
 	return gw
@@ -64,8 +65,9 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 func (gw *GhostWriter) Process() (err error) {
 	gw.links = make(map[string]string)
 	gw.site = &Site{
-		Posts: make(map[string]*Post),
-		Tags:  make(map[string]Posts),
+		Posts:    make(map[string]*Post),
+		Tags:     make(map[string]Posts),
+		Rendered: time.Now(),
 	}
 	if err = gw.fs.MkdirAll(gw.args.dst, 0755); err != nil {
 		return
@@ -722,6 +724,7 @@ type Site struct {
 	pathTemplate *template.Template
 	tagsTemplate *template.Template
 	Tags         map[string]Posts
+	Rendered     time.Time
 }
 
 // Returns the path for a given tag
