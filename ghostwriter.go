@@ -390,7 +390,10 @@ func (gw *GhostWriter) renderMisc() (err error) {
 		} else {
 			switch filepath.Ext(src) {
 			case ".tmpl":
-				dst = fmt.Sprintf("%v.html", dst[:len(dst)-5])
+				dst = dst[:len(dst)-5]
+				if filepath.Ext(dst) == "" {
+					dst = fmt.Sprintf("%v.html", dst)
+				}
 				gw.log.Printf("Rendering %v to %v\n", src, dst)
 				if err = gw.renderTemplate(src, dst); err != nil {
 					return
