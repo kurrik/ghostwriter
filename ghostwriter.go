@@ -757,6 +757,16 @@ func (s *Site) Root() string {
 	return s.meta.Root
 }
 
+// Returns the site author.
+func (s *Site) Author() string {
+	return s.meta.Author
+}
+
+// Returns the site email address.
+func (s *Site) Email() string {
+	return s.meta.Email
+}
+
 // Returns the posts of the site in desending chronological order.
 func (s *Site) PostsByDate() Posts {
 	p := PostsFromMap(s.Posts)
@@ -860,6 +870,8 @@ func (s *Site) PathTemplate() (t *template.Template, err error) {
 type SiteMeta struct {
 	Title       string
 	Root        string
+	Author      string
+	Email       string
 	PathFormat  string
 	DateFormat  string
 	TagsFormat  string
