@@ -59,8 +59,8 @@ func main() {
 	a := DefaultArgs()
 	flag.StringVar(&a.src, "src", "src", "Path to src files.")
 	flag.StringVar(&a.dst, "dst", "dst", "Build output directory.")
-	flag.StringVar(&a.addr, "address", "", "Serve at this address. Eg: ':80'")
-	flag.StringVar(&a.action, "action", "", "One of 'process', 'create' or 'serve'.")
+	flag.StringVar(&a.addr, "address", ":8080", "Serve at this address. Eg: ':80'")
+	flag.StringVar(&a.action, "action", "process", "One of 'process', 'create' or 'serve'.")
 	flag.BoolVar(&watch, "watch", false, "Keep watching the source dir?")
 	flag.Parse()
 	gw = NewGhostWriter(&fauxfile.RealFilesystem{}, a)
@@ -76,20 +76,19 @@ func main() {
 		err = Create(gw)
 		break
 	case "serve":
-		if a.addr != "" {
-			go func() {
-				if err := Serve(gw); err != nil {
-					fmt.Println(err)
-				}
-			}()
-		}
+		go func() {
+			if err := Serve(gw); err != nil {
+				fmt.Println(err)
+			}
+		}()
+		watch = true
+		break
 	case "process":
-	default:
-		if watch {
-			err = Watch(gw, a.src)
-		} else {
-			err = gw.Process()
-		}
+		err = gw.Process()
+		break
+	}
+	if watch {
+		err = Watch(gw, a.src)
 	}
 	if err != nil {
 		fmt.Println(err)
