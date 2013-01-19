@@ -122,7 +122,8 @@ const POST_1_MD = `
 This is a fake post, for testing.
 
 This is markdown
-----------------`
+----------------
+This is just {{textcontent "<a href='foo'>text content</a>"}} sans HTML.`
 
 const POST_2_META = `
 date: 2012-09-09
@@ -226,6 +227,7 @@ const POST_1_HTML = `
     <div>
       <p>This is a fake post, for testing.</p>
       <h2>This is markdown</h2>
+      <p>This is just text content sans HTML.</p>
     </div>
     <a href="/2012-09-09/hello-again">Next Post</a>
   </body>
@@ -296,6 +298,7 @@ const INDEX_HTML = `
     <div>
       <p>This is a fake post, for testing.</p>
       <h2>This is markdown</h2>
+      <p>This is just text content sans HTML.</p>
     </div>
   </body>
 </html>`

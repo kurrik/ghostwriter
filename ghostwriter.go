@@ -31,6 +31,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"regexp"
 )
 
 // Master Control Program.
@@ -431,6 +432,10 @@ func (gw *GhostWriter) getFuncMap() *template.FuncMap {
 	return &template.FuncMap{
 		"timeformat": func(t time.Time, f string) string {
 			return t.Format(f)
+		},
+		"textcontent": func(s string) string {
+			rex, _ := regexp.Compile("<[^>]*>")
+			return rex.ReplaceAllLiteralString(s, "")
 		},
 	}
 }
