@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/howeyc/fsnotify"
 	"os"
 	"path/filepath"
@@ -73,6 +74,7 @@ func (w *Watcher) WatchDirs() (err error) {
 		info      os.FileInfo
 		filenames []string
 		filename  string
+		errors    int
 	)
 	if w.watcher != nil {
 		w.watcher.Close()
@@ -87,6 +89,7 @@ func (w *Watcher) WatchDirs() (err error) {
 	if err = w.watcher.Watch(w.root); err != nil {
 		return
 	}
+	errors = 0
 	for len(queue) > 0 {
 		path = queue[0]
 		src = filepath.Join(w.root, path)
@@ -96,7 +99,15 @@ func (w *Watcher) WatchDirs() (err error) {
 		}
 		if info.IsDir() {
 			if filenames, err = w.gw.readDir(src); err != nil {
-				return
+				queue = append(queue, src)
+				w.gw.log.Printf("Error: %v, retrying later\n", err)
+				err = nil
+				errors += 1
+				if errors > 10 {
+					err = fmt.Errorf("Too many errors experienced, quitting")
+					return
+				}
+				time.Sleep(100 * time.Millisecond)
 			}
 			for i, filename = range filenames {
 				filenames[i] = filepath.Join(path, filename)
@@ -104,7 +115,15 @@ func (w *Watcher) WatchDirs() (err error) {
 			queue = append(queue, filenames...)
 			w.gw.log.Printf("Watching %v\n", src)
 			if err = w.watcher.Watch(src); err != nil {
-				return
+				queue = append(queue, src)
+				w.gw.log.Printf("Error: %v, retrying later\n", err)
+				err = nil
+				errors += 1
+				if errors > 10 {
+					err = fmt.Errorf("Too many errors experienced, quitting")
+					return
+				}
+				time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}

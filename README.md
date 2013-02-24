@@ -25,6 +25,22 @@ pass to the `--server` flag will be forwarded to
 http://golang.org/pkg/net/http/#Server so anything that function accepts
 should work.
 
+Problems
+--------
+"too many open files"
+Seems to happen on OSX because the default file limit is low (256).
+
+You can see how many files ghostwriter has open by running:
+
+    lsof | awk '{ print $2; }' | uniq -c | sort -rn | head
+
+The second column is the process ID.  Find the ID which matches your Ghostwriter
+process.  You can raise the limit temporarily by running:
+
+    ulimit -n 4096
+
+before executing your ghostwriter -watch command.
+
 Dependencies
 ------------
 Make sure you have bazaar installed.  In Ubuntu:
