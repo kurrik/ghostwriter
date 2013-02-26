@@ -27,8 +27,24 @@ type Watcher struct {
 	watcher *fsnotify.Watcher
 	root    string
 	gw      *GhostWriter
+	watched map[string]bool
 }
 
+func NewWatcher(gw *GhostWriter, root string) (w *Watcher, err error) {
+	w = &Watcher{
+		root: root,
+		gw:   gw,
+		watched: map[string]bool{},
+	}
+	w.watcher, err = fsnotify.NewWatcher()
+	return
+}
+
+func (w *Watcher) Close() {
+	if w.watcher != nil {
+		w.watcher.Close()
+	}
+}
 // Listen for FS events and signal work when something changes.
 // Will send errors over e.
 func (w *Watcher) Handle(work chan bool, e chan error) {
@@ -63,6 +79,15 @@ func (w *Watcher) Handle(work chan bool, e chan error) {
 	}
 }
 
+func (w *Watcher) WatchPath(path string) (err error) {
+	if _, ok := w.watched[path]; !ok {
+		w.gw.log.Printf("Watching %v\n", path)
+		err = w.watcher.Watch(path)
+		w.watched[path] = true
+	}
+	return
+}
+
 // Sets up filesystem notices for all directories under root, inclusive.
 // Can be called multiple times, initializes watcher object each time.
 func (w *Watcher) WatchDirs() (err error) {
@@ -76,17 +101,10 @@ func (w *Watcher) WatchDirs() (err error) {
 		filename  string
 		errors    int
 	)
-	if w.watcher != nil {
-		w.watcher.Close()
-	}
-	if w.watcher, err = fsnotify.NewWatcher(); err != nil {
-		return
-	}
 	if queue, err = w.gw.readDir(w.root); err != nil {
 		return
 	}
-	w.gw.log.Printf("Watching %v\n", w.root)
-	if err = w.watcher.Watch(w.root); err != nil {
+	if err = w.WatchPath(w.root); err != nil {
 		return
 	}
 	errors = 0
@@ -113,8 +131,7 @@ func (w *Watcher) WatchDirs() (err error) {
 				filenames[i] = filepath.Join(path, filename)
 			}
 			queue = append(queue, filenames...)
-			w.gw.log.Printf("Watching %v\n", src)
-			if err = w.watcher.Watch(src); err != nil {
+			if err = w.WatchPath(src); err != nil {
 				queue = append(queue, src)
 				w.gw.log.Printf("Error: %v, retrying later\n", err)
 				err = nil
@@ -141,10 +158,12 @@ func Watch(gw *GhostWriter, root string) (err error) {
 		errors = make(chan error, 1)
 		work   = make(chan bool, 1)
 	)
-	watcher = &Watcher{
-		root: root,
-		gw:   gw,
+
+	if watcher, err = NewWatcher(gw, root); err != nil {
+		return
 	}
+	defer watcher.Close()
+
 	if err = watcher.WatchDirs(); err != nil {
 		return
 	}
