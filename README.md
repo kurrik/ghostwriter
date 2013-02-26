@@ -5,9 +5,8 @@ all myself.
 
 Status
 ------
-Starting to actually be a thing!
-I'll update once I'm using this for actual projects.
-Currently building the example site under `testsite`.  Run:
+Ghostwriter builds the entire site at http://blog.roomanna.com.
+For an example, try building the example site under `testsite`.  Run:
 
     $ cd testsite
     $ go run ../*.go --watch
