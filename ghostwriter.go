@@ -105,11 +105,27 @@ func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 	if fsrc, err = gw.fs.Open(src); err != nil {
 		return
 	}
-	defer fsrc.Close()
+
+	defer func() {
+		if err := fsrc.Close(); err != nil {
+			gw.log.Printf("Problem closing %v: %v\n", src, err)
+		} else {
+			gw.log.Printf("Closed %v\n", src)
+		}
+	}()
+
 	if fdst, err = gw.fs.Create(dst); err != nil {
 		return
 	}
-	defer fdst.Close()
+
+	defer func() {
+		if err := fdst.Close(); err != nil {
+			gw.log.Printf("Problem closing %v: %v\n", dst, err)
+		} else {
+			gw.log.Printf("Closed %v\n", dst)
+		}
+	}()
+
 	if fi, err = fsrc.Stat(); err != nil {
 		return
 	}
