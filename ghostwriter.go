@@ -27,11 +27,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
 	"time"
-	"regexp"
 )
 
 // Master Control Program.
@@ -749,6 +749,32 @@ type PostMeta struct {
 	Slug  string
 }
 
+// Represents a tag and the number of posts with that tag.
+type TagCount struct {
+	Tag   string
+	Count int
+}
+
+// A list of TagCounts
+type TagCounts []*TagCount
+
+// Compares two posts.
+func (tc TagCounts) Less(i int, j int) bool {
+	ci := tc[i].Count
+	cj := tc[j].Count
+	return ci > cj
+}
+
+// Returns the length of a set of tag counts.
+func (tc TagCounts) Len() int {
+	return len(tc)
+}
+
+// Swaps two tag counts in the given positions.
+func (tc TagCounts) Swap(i int, j int) {
+	tc[i], tc[j] = tc[j], tc[i]
+}
+
 // Represents the site for templating purposes.
 type Site struct {
 	Posts        map[string]*Post
@@ -780,6 +806,18 @@ func (s *Site) TagPath(tag string) string {
 		panic(fmt.Sprintf("Could not get path for tag %v", tag))
 	}
 	return b.String()
+}
+
+// Returns a list of TagCount objects, sorted by count.
+func (s *Site) TagCounts() TagCounts {
+	counts := make(TagCounts, len(s.Tags))
+	i := 0
+	for tag, posts := range s.Tags {
+		counts[i] = &TagCount{Tag: tag, Count: len(posts)}
+		i++
+	}
+	sort.Sort(counts)
+	return counts
 }
 
 // Returns the title of the site.
