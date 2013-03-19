@@ -33,6 +33,7 @@ type Args struct {
 	config       string
 	postTemplate string
 	tagsTemplate string
+	before       string
 }
 
 // Sensible defaults, for a sensible time.
@@ -46,6 +47,7 @@ func DefaultArgs() *Args {
 		config:       "config.yaml",
 		postTemplate: "post.tmpl",
 		tagsTemplate: "tags.tmpl",
+		before:       "",
 	}
 }
 
@@ -62,6 +64,7 @@ func main() {
 	flag.StringVar(&a.addr, "address", ":8080", "Serve at this address. Eg: ':80'")
 	flag.StringVar(&a.action, "action", "process", "One of 'process', 'create' or 'serve'.")
 	flag.BoolVar(&watch, "watch", false, "Keep watching the source dir?")
+	flag.StringVar(&a.before, "before", "", "OS command to execute before build")
 	flag.Parse()
 	gw = NewGhostWriter(&fauxfile.RealFilesystem{}, a)
 	if a.addr != "" {

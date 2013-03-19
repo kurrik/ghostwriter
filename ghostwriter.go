@@ -25,6 +25,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -64,6 +65,19 @@ func NewGhostWriter(fs fauxfile.Filesystem, args *Args) *GhostWriter {
 
 // Parses the src directory, rendering into dst as needed.
 func (gw *GhostWriter) Process() (err error) {
+	if gw.args.before != "" {
+		var (
+			cmd *exec.Cmd
+			out bytes.Buffer
+		)
+		cmd = exec.Command(gw.args.before)
+		cmd.Stdout = &out
+		gw.log.Printf("Running %v\n", gw.args.before)
+		if err = cmd.Run(); err != nil {
+			return
+		}
+		gw.log.Printf("Output:\n%v\n", out.String())
+	}
 	gw.links = make(map[string]string)
 	gw.site = &Site{
 		Posts:    make(map[string]*Post),
