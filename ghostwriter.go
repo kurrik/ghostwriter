@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/kurrik/fauxfile"
+	"github.com/kurrik/tmpl"
 	"github.com/russross/blackfriday"
 	"io"
 	"launchpad.net/goyaml"
@@ -42,9 +43,9 @@ type GhostWriter struct {
 	log          *log.Logger
 	site         *Site
 	links        map[string]string
-	rootTemplate *template.Template
-	postTemplate *template.Template
-	tagsTemplate *template.Template
+	rootTemplate *tmpl.Templates
+	postTemplate string
+	tagsTemplate string
 }
 
 // Creates a new GhostWriter.
@@ -160,27 +161,6 @@ func (gw *GhostWriter) isDir(path string) bool {
 	return info.IsDir()
 }
 
-// Returns a copy of the global template with the supplied template merged in.
-func (gw *GhostWriter) mergeTemplate(t *template.Template) (out *template.Template, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			// Seems to be a bug with cloning empty templates.
-			err = fmt.Errorf("Problem cloning template: %v", r)
-		}
-	}()
-	if out, err = gw.rootTemplate.Clone(); err != nil {
-		return
-	}
-	for _, tmpl := range t.Templates() {
-		ptr := out.Lookup(tmpl.Name())
-		if ptr == nil {
-			ptr = out.New(tmpl.Name())
-		}
-		(*ptr) = *tmpl
-	}
-	return
-}
-
 // Parses a post meta file at the given path.
 // Returns a pointer to a populated PostMeta object or an error if it failed.
 func (gw *GhostWriter) parsePostMeta(path string) (meta *PostMeta, err error) {
@@ -271,43 +251,44 @@ func (gw *GhostWriter) parseSiteMeta() (err error) {
 func (gw *GhostWriter) parseTemplates() (err error) {
 	var (
 		src       string = filepath.Join(gw.args.src, gw.args.templates)
+		path      string
 		names     []string
 		id        string
 		text      string
 		foundPost bool = false
 		foundRoot bool = false
 		foundTags bool = false
-		fmap      *template.FuncMap
 	)
-	gw.rootTemplate = template.New("root")
+	gw.rootTemplate = tmpl.NewTemplates()
+	gw.rootTemplate.SetFilesystem(gw.fs)
 	if names, err = gw.readDir(src); err != nil {
 		gw.log.Printf("Templates directory not found %v\n", src)
 		// Fail silently
 		return nil
 	}
-	fmap = gw.getFuncMap()
 	for _, n := range names {
-		if text, err = gw.readFile(filepath.Join(src, n)); err != nil {
-			return
-		}
+		path = filepath.Join(src, n)
 		id = strings.Replace(n, filepath.Ext(n), "", -1)
 		if n == gw.args.postTemplate {
 			foundPost = true
-			gw.postTemplate = template.New("post")
-			_, err = gw.postTemplate.Funcs(*fmap).Parse(text)
-			gw.log.Printf("Parsed post template with name %v\n", id)
+			if text, err = gw.readFile(path); err != nil {
+				return
+			}
+			gw.postTemplate = text
+			gw.log.Printf("Found post template with name %v\n", id)
 		} else if n == gw.args.tagsTemplate {
 			foundTags = true
-			gw.tagsTemplate = template.New("tags")
-			_, err = gw.tagsTemplate.Funcs(*fmap).Parse(text)
-			gw.log.Printf("Parsed tags template with name %v\n", id)
+			if text, err = gw.readFile(path); err != nil {
+				return
+			}
+			gw.tagsTemplate = text
+			gw.log.Printf("Found tags template with name %v\n", id)
 		} else {
+			if err = gw.rootTemplate.AddTemplateFromFile(path); err != nil {
+				return
+			}
 			foundRoot = true
-			_, err = gw.rootTemplate.Funcs(*fmap).Parse(text)
-			gw.log.Printf("Parsed root template with name %v\n", id)
-		}
-		if err != nil {
-			return
+			gw.log.Printf("Found root template with name %v\n", id)
 		}
 	}
 	if foundRoot == false {
@@ -316,9 +297,9 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 			// Not sure if this makes the greatest sense, but use
 			// the post template as the base template.  Maybe they
 			// just put all the HTML in there?
-			gw.rootTemplate = gw.postTemplate
+			gw.rootTemplate.AddTemplate(gw.postTemplate)
 		} else {
-			gw.rootTemplate.Parse("")
+			gw.rootTemplate.AddTemplate("")
 		}
 	}
 	if foundPost == false {
@@ -484,6 +465,7 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		names    []string
 		fmap     *template.FuncMap
 		index    int
+		str      string
 	)
 	if postpath, err = post.Path(); err != nil {
 		return
@@ -553,10 +535,10 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		"Post": post,
 		"Site": gw.site,
 	}
-	if tmpl, err = gw.mergeTemplate(gw.postTemplate); err != nil {
+	if str, err = gw.rootTemplate.RenderText(gw.postTemplate, data); err != nil {
 		return
 	}
-	err = tmpl.Execute(writer, data)
+	writer.Write([]byte(str))
 	writer.Flush()
 	return
 }
@@ -568,14 +550,11 @@ func (gw *GhostWriter) renderTags() (err error) {
 		tag     string
 		dst     string
 		tagpath string
-		tmpl    *template.Template
 		writer  *bufio.Writer
 		fdst    fauxfile.File
+		str     string
 	)
-	if gw.tagsTemplate == nil {
-		return
-	}
-	if tmpl, err = gw.mergeTemplate(gw.tagsTemplate); err != nil {
+	if gw.tagsTemplate == "" {
 		return
 	}
 	for tag, posts = range gw.site.Tags {
@@ -593,7 +572,10 @@ func (gw *GhostWriter) renderTags() (err error) {
 			"Posts": posts,
 			"Site":  gw.site,
 		}
-		err = tmpl.Execute(writer, data)
+		if str, err = gw.rootTemplate.RenderText(gw.tagsTemplate, data); err != nil {
+			return
+		}
+		writer.Write([]byte(str))
 		writer.Flush()
 		if err != nil {
 			return
@@ -606,23 +588,11 @@ func (gw *GhostWriter) renderTags() (err error) {
 // Renders a Go template from the given path to the output path.
 func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 	var (
-		text   string
-		clone  *template.Template
-		tmpl   *template.Template
 		writer *bufio.Writer
 		f      fauxfile.File
 		data   map[string]interface{}
+		str    string
 	)
-	if text, err = gw.readFile(src); err != nil {
-		return
-	}
-	fmap := gw.getFuncMap()
-	if tmpl, err = template.New(src).Funcs(*fmap).Parse(text); err != nil {
-		return
-	}
-	if clone, err = gw.mergeTemplate(tmpl); err != nil {
-		return
-	}
 	if f, err = gw.fs.Create(dst); err != nil {
 		return
 	}
@@ -630,7 +600,10 @@ func (gw *GhostWriter) renderTemplate(src string, dst string) (err error) {
 	data = map[string]interface{}{
 		"Site": gw.site,
 	}
-	err = clone.Execute(writer, data)
+	if str, err = gw.rootTemplate.RenderFile(src, data); err != nil {
+		return
+	}
+	writer.Write([]byte(str))
 	writer.Flush()
 	return
 }
