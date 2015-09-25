@@ -711,7 +711,15 @@ func (p *Post) Tags() (t []string) {
 
 // Returns any script URLs corresponding with the post.
 func (p *Post) Scripts() (s []string) {
-	s = p.meta.Scripts
+	var (
+		i        = 0
+		postpath string
+	)
+	s = make([]string, len(p.meta.Scripts))
+	postpath, _ = p.Path()
+	for i = 0; i < len(p.meta.Scripts); i++ {
+		s[i] = path.Join(postpath, p.meta.Scripts[i])
+	}
 	return
 }
 

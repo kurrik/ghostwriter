@@ -270,7 +270,7 @@ const POST_2_HTML = `
       <p>This is content after the break</p>
     </div>
     <a href="/2012-09-07/hello-world">Prev Post</a>
-    <script src="foo.js"></script>
+    <script src="/2012-09-09/hello-again/foo.js"></script>
   </body>
 </html>`
 
