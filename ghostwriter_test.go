@@ -130,7 +130,9 @@ date: 2012-09-09
 slug: hello-again
 title: Hello Again!
 tags:
-  - hello`
+  - hello
+scripts:
+  - foo.js`
 
 const POST_2_MD = `
 This is a <a href="{{link "01-test"}}">link</a> to a post.
@@ -213,6 +215,9 @@ const POST_TMPL = `
   <div>{{.Post.Body}}</div>
   {{if .Post.Next}}<a href="{{.Post.Next.Path}}">Next Post</a>{{end}}
   {{if .Post.Prev}}<a href="{{.Post.Prev.Path}}">Prev Post</a>{{end}}
+  {{range .Post.Scripts}}
+    <script src="{{.}}"></script>
+  {{end}}
 {{end}}`
 
 const POST_1_HTML = `
@@ -265,6 +270,7 @@ const POST_2_HTML = `
       <p>This is content after the break</p>
     </div>
     <a href="/2012-09-07/hello-world">Prev Post</a>
+    <script src="foo.js"></script>
   </body>
 </html>`
 

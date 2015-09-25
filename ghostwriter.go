@@ -709,6 +709,12 @@ func (p *Post) Tags() (t []string) {
 	return
 }
 
+// Returns any script URLs corresponding with the post.
+func (p *Post) Scripts() (s []string) {
+	s = p.meta.Scripts
+	return
+}
+
 // Returns the fully-qualified link for the post as a url.URL object.
 func (p *Post) URL() (u *url.URL, err error) {
 	var postpath string
@@ -730,10 +736,11 @@ func (p *Post) Prev() *Post {
 
 // Serializable metadata about the post.
 type PostMeta struct {
-	Tags  []string
-	Title string
-	Date  string
-	Slug  string
+	Tags    []string
+	Title   string
+	Date    string
+	Slug    string
+	Scripts []string
 }
 
 // Represents a tag and the number of posts with that tag.
