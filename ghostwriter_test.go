@@ -483,3 +483,85 @@ func TestProcess(t *testing.T) {
 	LooseCompareFile(t, fs, "build/tags/hello/index.html", TAG_HELLO_HTML)
 	LooseCompareFile(t, fs, "build/tags/world/index.html", TAG_WORLD_HTML)
 }
+
+const POST_INCLUDE_META = `
+date: 2015-09-01
+slug: include
+title: Include`
+
+const POST_VALID_INCLUDE = `
+This post makes a valid include.
+{{include "include.html"}}`
+
+const POST_INVALID_INCLUDE = `
+This post makes an invalid include.
+{{include "foo.html"}}`
+
+const INCL_CONTENT = `
+This is included content including {{ mustache }}`
+
+const POST_VALID_INCLUDE_HTML = `<!DOCTYPE html>
+<html>
+  <head>
+  <title>Test blog - Include</title>
+  <link rel="canonical" href="http://www.example.com/2015-09-01/include" />
+  </head>
+  <body>
+    <h1>Include</h1>
+    <div>
+      <p>This post makes a valid include.</p>
+      <p>This is included content including {{ mustache }}</p>
+    </div>
+  </body>
+</html>`
+
+const POST_INVALID_INCLUDE_HTML = `<!DOCTYPE html>
+<html>
+  <head>
+  <title>Test blog - Include</title>
+  <link rel="canonical" href="http://www.example.com/2015-09-01/include" />
+  </head>
+  <body>
+    <h1>Include</h1>
+    <div>
+      <p>
+        This post makes an invalid include.
+        [[ERROR: Could not read src/posts/01-test/foo.html]]
+      </p>
+    </div>
+  </body>
+</html>`
+
+func TestIncludeValid(t *testing.T) {
+	var (
+		err error
+	)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/root.tmpl", SITE_TMPL)
+	WriteFile(fs, "src/templates/post.tmpl", POST_TMPL)
+	WriteFile(fs, "src/posts/01-test/body.md", POST_VALID_INCLUDE)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_INCLUDE_META)
+	WriteFile(fs, "src/posts/01-test/include.html", INCL_CONTENT)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	LooseCompareFile(t, fs, "build/2015-09-01/include/index.html", POST_VALID_INCLUDE_HTML)
+}
+
+func TestIncludeInvalid(t *testing.T) {
+	var (
+		err error
+	)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/root.tmpl", SITE_TMPL)
+	WriteFile(fs, "src/templates/post.tmpl", POST_TMPL)
+	WriteFile(fs, "src/posts/01-test/body.md", POST_INVALID_INCLUDE)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_INCLUDE_META)
+	WriteFile(fs, "src/posts/01-test/include.html", INCL_CONTENT)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	LooseCompareFile(t, fs, "build/2015-09-01/include/index.html", POST_INVALID_INCLUDE_HTML)
+}

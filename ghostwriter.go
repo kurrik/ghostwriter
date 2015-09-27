@@ -510,6 +510,17 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		}
 		return gw.links[i]
 	}
+	(*fmap)["include"] = func(i string) (contents string) {
+		var (
+			includeErr error
+			fixedPath  string
+		)
+		fixedPath = filepath.Join(post.SrcDir, i)
+		if contents, includeErr = gw.readFile(fixedPath); includeErr != nil {
+			contents = fmt.Sprintf("[[ERROR: Could not read %v]]", fixedPath)
+		}
+		return
+	}
 
 	// Render post body against links map.
 	tmpl, err = template.New("body").Funcs(*fmap).Parse(postbody)
