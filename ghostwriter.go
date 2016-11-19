@@ -21,8 +21,8 @@ import (
 	"github.com/kurrik/fauxfile"
 	"github.com/kurrik/tmpl"
 	"github.com/russross/blackfriday"
+	"gopkg.in/yaml.v2"
 	"io"
-	"launchpad.net/goyaml"
 	"log"
 	"net/url"
 	"os"
@@ -637,7 +637,7 @@ func (gw *GhostWriter) unyaml(path string, out interface{}) (err error) {
 	if _, err = file.Read(data); err != nil {
 		return
 	}
-	err = goyaml.Unmarshal(data, out)
+	err = yaml.Unmarshal(data, out)
 	return
 }
 
@@ -729,7 +729,11 @@ func (p *Post) Scripts() (s []string) {
 	s = make([]string, len(p.meta.Scripts))
 	postpath, _ = p.Path()
 	for i = 0; i < len(p.meta.Scripts); i++ {
-		s[i] = path.Join(postpath, p.meta.Scripts[i])
+		if strings.HasPrefix(p.meta.Scripts[i], "/") {
+			s[i] = p.meta.Scripts[i]
+		} else {
+			s[i] = path.Join(postpath, p.meta.Scripts[i])
+		}
 	}
 	return
 }

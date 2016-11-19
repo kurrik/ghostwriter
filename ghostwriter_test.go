@@ -132,7 +132,8 @@ title: Hello Again!
 tags:
   - hello
 scripts:
-  - foo.js`
+  - foo.js
+  - /bar.js`
 
 const POST_2_MD = `
 This is a <a href="{{link "01-test"}}">link</a> to a post.
@@ -271,6 +272,7 @@ const POST_2_HTML = `
     </div>
     <a href="/2012-09-07/hello-world">Prev Post</a>
     <script src="/2012-09-09/hello-again/foo.js"></script>
+    <script src="/bar.js"></script>
   </body>
 </html>`
 
