@@ -720,21 +720,33 @@ func (p *Post) Tags() (t []string) {
 	return
 }
 
-// Returns any script URLs corresponding with the post.
-func (p *Post) Scripts() (s []string) {
+// Resolves paths for a list of inputs.
+func (p *Post) resolvePaths(input []string) (output []string) {
 	var (
 		i        = 0
 		postpath string
 	)
-	s = make([]string, len(p.meta.Scripts))
+	output = make([]string, len(input))
 	postpath, _ = p.Path()
-	for i = 0; i < len(p.meta.Scripts); i++ {
-		if strings.HasPrefix(p.meta.Scripts[i], "/") {
-			s[i] = p.meta.Scripts[i]
+	for i = 0; i < len(input); i++ {
+		if strings.HasPrefix(input[i], "/") {
+			output[i] = input[i]
 		} else {
-			s[i] = path.Join(postpath, p.meta.Scripts[i])
+			output[i] = path.Join(postpath, input[i])
 		}
 	}
+	return
+}
+
+// Returns any script URLs corresponding with the post.
+func (p *Post) Scripts() (s []string) {
+	s = p.resolvePaths(p.meta.Scripts)
+	return
+}
+
+// Returns any style URLs corresponding with the post.
+func (p *Post) Styles() (s []string) {
+	s = p.resolvePaths(p.meta.Styles)
 	return
 }
 
@@ -764,6 +776,7 @@ type PostMeta struct {
 	Date    string
 	Slug    string
 	Scripts []string
+	Styles  []string
 }
 
 // Represents a tag and the number of posts with that tag.

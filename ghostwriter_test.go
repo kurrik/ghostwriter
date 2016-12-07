@@ -133,7 +133,9 @@ tags:
   - hello
 scripts:
   - foo.js
-  - /bar.js`
+  - /bar.js
+styles:
+  - foo.css`
 
 const POST_2_MD = `
 This is a <a href="{{link "01-test"}}">link</a> to a post.
@@ -210,6 +212,9 @@ const POST_TMPL = `
 {{define "head"}}
   <title>{{.Site.Title}} - {{.Post.Title}}</title>
   <link rel="canonical" href="{{.Post.Permalink}}" />
+  {{range .Post.Styles}}
+    <link rel="stylesheet" href="{{.}}" />
+  {{end}}
 {{end}}
 {{define "body"}}
   <h1>{{.Post.Title}}</h1>
@@ -259,6 +264,7 @@ const POST_2_HTML = `
   <head>
     <title>Test blog - Hello Again!</title>
     <link rel="canonical" href="http://www.example.com/2012-09-09/hello-again" />
+    <link rel="stylesheet" href="/2012-09-09/hello-again/foo.css" />
   </head>
   <body>
     <h1>Hello Again!</h1>
