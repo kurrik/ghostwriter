@@ -136,3 +136,15 @@ func (s *Site) PrevPost(p *Post) *Post {
 	}
 	return nil
 }
+
+// Returns a template suitable for rendering post URLs.
+func (s *Site) PathTemplate() (t *template.Template, err error) {
+	if s.pathTemplate == nil {
+		s.pathTemplate, err = template.New("path").Parse(s.meta.PathFormat)
+		if err != nil {
+			return
+		}
+	}
+	t = s.pathTemplate
+	return
+}
