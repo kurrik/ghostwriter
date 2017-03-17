@@ -616,18 +616,20 @@ title: Imagemeta`
 
 const POST_VALID_IMAGEMETA = `
 This post makes a valid imagemeta load.
-{{ $thumb01 := imagemeta "image01_thumb.png" nil }}
-{{ $image01 := imagemeta "image01.png" (map "Thumb" $thumb01 "Description" "An image!") }}
-{{ $thumb02 := imagemeta "image02_thumb.png" nil }}
-{{ $image02 := imagemeta "image02.png" (map "Thumb" $thumb02 "Description" "Another image!") }}
-{{template "gallery" (slice $image01 $image02)}}`
+{{ $image01 := imagemeta "image01.png" }}
+{{ $thumb01 := imagemeta "image01_thumb.png" }}
+{{ $entry01 := map "Image" $image01 "Thumb" $thumb01 "Description" "An image!" }}
+{{ $image02 := imagemeta "image02.png" }}
+{{ $thumb02 := imagemeta "image02_thumb.png" }}
+{{ $entry02 := map "Image" $image02 "Thumb" $thumb02 "Description" "Another image!" }}
+{{template "gallery" (slice $entry01 $entry02)}}`
 
 const IMAGEMETA_TEMPLATE_GALLERY = `{{define "gallery"}}
 {{range .}}
-  <a href="{{.Path}}">
-    <img src="{{.Data.Thumb.Path}}" width="{{.Data.Thumb.Width}}" height="{{.Data.Thumb.Height}}" />
+  <a href="{{.Image.Path}}">
+    <img src="{{.Thumb.Path}}" width="{{.Thumb.Width}}" height="{{.Thumb.Height}}" />
   </a>
-  {{.Data.Description}} - {{.Width}}x{{.Height}}
+  {{.Description}} - {{.Image.Width}}x{{.Image.Height}}
 {{end}}
 {{end}}`
 
