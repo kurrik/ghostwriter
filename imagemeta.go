@@ -29,7 +29,7 @@ type ImageMeta struct {
 	Data   map[string]string
 }
 
-func NewImageMeta(fs fauxfile.Filesystem, path string) (meta ImageMeta, err error) {
+func NewImageMeta(fs fauxfile.Filesystem, path string, data map[string]string) (meta ImageMeta, err error) {
 	var (
 		img  image.Image
 		file fauxfile.File
@@ -45,7 +45,7 @@ func NewImageMeta(fs fauxfile.Filesystem, path string) (meta ImageMeta, err erro
 		Width:  img.Bounds().Dx(),
 		Height: img.Bounds().Dy(),
 		Path:   path,
-		Data:   map[string]string{},
+		Data:   data,
 	}
 	return
 }

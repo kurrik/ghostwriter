@@ -616,8 +616,8 @@ title: Imagemeta`
 
 const POST_VALID_IMAGEMETA = `
 This post makes a valid imagemeta load.
-{{template "gallery" (imagemeta "image01.png" "Description" "An image!")}}
-{{template "gallery" (imagemeta "image02.png" "Description" "Another image!")}}`
+{{template "gallery" imagemeta "image01.png" (map "Description" "An image!")}}
+{{template "gallery" imagemeta "image02.png" (map "Description" "Another image!")}}`
 
 const IMAGEMETA_TEMPLATE_GALLERY = `{{define "gallery"}}
   {{.Path}} - {{.Width}}x{{.Height}} ({{.Data.Description}})

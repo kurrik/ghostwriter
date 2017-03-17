@@ -521,22 +521,23 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		}
 		return
 	}
-	(*fmap)["imagemeta"] = func(path string, data ...string) (img ImageMeta, ferr error) {
-		var (
-			fixedPath string
-			key       string
-		)
-		fixedPath = filepath.Join(post.SrcDir, path)
-		if img, ferr = NewImageMeta(gw.fs, fixedPath); ferr != nil {
-			ferr = fmt.Errorf("Could not load image metadata: %v", ferr)
-			return
-		}
+	(*fmap)["map"] = func(data ...string) (out map[string]string) {
+		var key string
+		out = map[string]string{}
 		for i, datum := range data {
 			if i%2 == 0 {
 				key = datum
 			} else {
-				img.Data[key] = datum
+				out[key] = datum
 			}
+		}
+		return
+	}
+	(*fmap)["imagemeta"] = func(path string, data map[string]string) (img ImageMeta, ferr error) {
+		var fixedPath string = filepath.Join(post.SrcDir, path)
+		if img, ferr = NewImageMeta(gw.fs, fixedPath, data); ferr != nil {
+			ferr = fmt.Errorf("Could not load image metadata: %v", ferr)
+			return
 		}
 		return
 	}
