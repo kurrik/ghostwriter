@@ -616,13 +616,18 @@ title: Imagemeta`
 
 const POST_VALID_IMAGEMETA = `
 This post makes a valid imagemeta load.
-{{ $img01 := imagemeta "image01.png" (map "Description" "An image!") }}
-{{ $img02 := imagemeta "image02.png" (map "Description" "Another image!") }}
-{{template "gallery" (slice $img01 $img02)}}`
+{{ $thumb01 := imagemeta "image01_thumb.png" nil }}
+{{ $image01 := imagemeta "image01.png" (map "Thumb" $thumb01 "Description" "An image!") }}
+{{ $thumb02 := imagemeta "image02_thumb.png" nil }}
+{{ $image02 := imagemeta "image02.png" (map "Thumb" $thumb02 "Description" "Another image!") }}
+{{template "gallery" (slice $image01 $image02)}}`
 
 const IMAGEMETA_TEMPLATE_GALLERY = `{{define "gallery"}}
 {{range .}}
-  {{.Path}} - {{.Width}}x{{.Height}} ({{.Data.Description}})
+  <a href="{{.Path}}">
+    <img src="{{.Data.Thumb.Path}}" width="{{.Data.Thumb.Width}}" height="{{.Data.Thumb.Height}}" />
+  </a>
+  {{.Data.Description}} - {{.Width}}x{{.Height}}
 {{end}}
 {{end}}`
 
@@ -636,8 +641,18 @@ const POST_VALID_IMAGEMETA_HTML = `<!DOCTYPE html>
     <h1>Imagemeta</h1>
     <div>
       <p>This post makes a valid imagemeta load.</p>
-      <p>src/posts/01-test/image01.png - 250x340 (An image!)</p>
-      <p>src/posts/01-test/image02.png - 250x340 (Another image!)</p>
+      <p>
+        <a href="src/posts/01-test/image01.png">
+          <img src="src/posts/01-test/image01_thumb.png" width="250" height="340" />
+        </a>
+        An image! - 250x340
+      </p>
+      <p>
+        <a href="src/posts/01-test/image02.png">
+          <img src="src/posts/01-test/image02_thumb.png" width="250" height="340" />
+        </a>
+        Another image! - 250x340
+      </p>
     </div>
   </body>
 </html>`
@@ -654,7 +669,9 @@ func TestImagemetaValid(t *testing.T) {
 	WriteFile(fs, "src/posts/01-test/body.md", POST_VALID_IMAGEMETA)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_IMAGEMETA_META)
 	WriteBase64File(fs, "src/posts/01-test/image01.png", BASE64_IMAGE)
+	WriteBase64File(fs, "src/posts/01-test/image01_thumb.png", BASE64_IMAGE)
 	WriteBase64File(fs, "src/posts/01-test/image02.png", BASE64_IMAGE)
+	WriteBase64File(fs, "src/posts/01-test/image02_thumb.png", BASE64_IMAGE)
 	if err = gw.Process(); err != nil {
 		t.Fatalf("Error: %v", err)
 	}

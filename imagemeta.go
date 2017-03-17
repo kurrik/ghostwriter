@@ -26,10 +26,10 @@ type ImageMeta struct {
 	Width  int
 	Height int
 	Path   string
-	Data   map[string]string
+	Data   map[string]interface{}
 }
 
-func NewImageMeta(fs fauxfile.Filesystem, path string, data map[string]string) (meta ImageMeta, err error) {
+func NewImageMeta(fs fauxfile.Filesystem, path string, data map[string]interface{}) (meta ImageMeta, err error) {
 	var (
 		img  image.Image
 		file fauxfile.File

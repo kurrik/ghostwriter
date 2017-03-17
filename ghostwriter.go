@@ -524,19 +524,19 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 	(*fmap)["slice"] = func(data ...interface{}) (out []interface{}) {
 		return data
 	}
-	(*fmap)["map"] = func(data ...string) (out map[string]string) {
+	(*fmap)["map"] = func(data ...interface{}) (out map[string]interface{}) {
 		var key string
-		out = map[string]string{}
+		out = map[string]interface{}{}
 		for i, datum := range data {
 			if i%2 == 0 {
-				key = datum
+				key = datum.(string)
 			} else {
 				out[key] = datum
 			}
 		}
 		return
 	}
-	(*fmap)["imagemeta"] = func(path string, data map[string]string) (img ImageMeta, ferr error) {
+	(*fmap)["imagemeta"] = func(path string, data map[string]interface{}) (img ImageMeta, ferr error) {
 		var fixedPath string = filepath.Join(post.SrcDir, path)
 		if img, ferr = NewImageMeta(gw.fs, fixedPath, data); ferr != nil {
 			ferr = fmt.Errorf("Could not load image metadata: %v", ferr)
