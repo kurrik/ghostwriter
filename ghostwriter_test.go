@@ -644,14 +644,14 @@ const POST_VALID_IMAGEMETA_HTML = `<!DOCTYPE html>
     <div>
       <p>This post makes a valid imagemeta load.</p>
       <p>
-        <a href="src/posts/01-test/image01.png">
-          <img src="src/posts/01-test/image01_thumb.png" width="250" height="340" />
+        <a href="/2017-03-16/imagemeta/image01.png">
+          <img src="/2017-03-16/imagemeta/image01_thumb.png" width="250" height="340" />
         </a>
         An image! - 250x340
       </p>
       <p>
-        <a href="src/posts/01-test/image02.png">
-          <img src="src/posts/01-test/image02_thumb.png" width="250" height="340" />
+        <a href="/2017-03-16/imagemeta/image02.png">
+          <img src="/2017-03-16/imagemeta/image02_thumb.png" width="250" height="340" />
         </a>
         Another image! - 250x340
       </p>
