@@ -307,6 +307,7 @@ func (gw *GhostWriter) parseTemplates() (err error) {
 	if foundTags == false {
 		// Not an error
 	}
+	//fmt.Printf("TEMPLATES: %v\n", gw.rootTemplate.Templates())
 	return
 }
 
@@ -520,23 +521,46 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		}
 		return
 	}
-
-	// Render post body against links map.
-	tmpl, err = template.New("body").Funcs(*fmap).Parse(postbody)
-	if err != nil {
+	(*fmap)["imagemeta"] = func(path string, data ...string) (img ImageMeta, ferr error) {
+		var (
+			fixedPath string
+			key       string
+		)
+		fixedPath = filepath.Join(post.SrcDir, path)
+		if img, ferr = NewImageMeta(gw.fs, fixedPath); ferr != nil {
+			ferr = fmt.Errorf("Could not load image metadata: %v", ferr)
+			return
+		}
+		for i, datum := range data {
+			if i%2 == 0 {
+				key = datum
+			} else {
+				img.Data[key] = datum
+			}
+		}
 		return
 	}
-	body = new(bytes.Buffer)
-	if err = tmpl.Execute(body, nil); err != nil {
-		return
-	}
 
-	// Render markdown
-	post.Body = string(blackfriday.MarkdownCommon(body.Bytes()))
+	if len(postbody) > 0 {
+		// Render post body against function declarations
+		if tmpl, err = gw.rootTemplate.MergeInto(template.New("body")); err != nil {
+			return
+		}
+		if tmpl, err = tmpl.Lookup("body").Funcs(*fmap).Parse(postbody); err != nil {
+			return
+		}
+		body = new(bytes.Buffer)
+		if err = tmpl.Lookup("body").Execute(body, nil); err != nil {
+			return
+		}
 
-	// Check for snippet
-	if index = strings.Index(post.Body, "<!--BREAK-->"); index != -1 {
-		post.Snippet = post.Body[0:index]
+		// Render markdown
+		post.Body = string(blackfriday.MarkdownCommon(body.Bytes()))
+
+		// Check for snippet
+		if index = strings.Index(post.Body, "<!--BREAK-->"); index != -1 {
+			post.Snippet = post.Body[0:index]
+		}
 	}
 
 	// Render post into site template.
