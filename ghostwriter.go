@@ -521,6 +521,9 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		}
 		return
 	}
+	(*fmap)["slice"] = func(data ...interface{}) (out []interface{}) {
+		return data
+	}
 	(*fmap)["map"] = func(data ...string) (out map[string]string) {
 		var key string
 		out = map[string]string{}

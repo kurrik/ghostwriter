@@ -616,11 +616,14 @@ title: Imagemeta`
 
 const POST_VALID_IMAGEMETA = `
 This post makes a valid imagemeta load.
-{{template "gallery" imagemeta "image01.png" (map "Description" "An image!")}}
-{{template "gallery" imagemeta "image02.png" (map "Description" "Another image!")}}`
+{{ $img01 := imagemeta "image01.png" (map "Description" "An image!") }}
+{{ $img02 := imagemeta "image02.png" (map "Description" "Another image!") }}
+{{template "gallery" (slice $img01 $img02)}}`
 
 const IMAGEMETA_TEMPLATE_GALLERY = `{{define "gallery"}}
+{{range .}}
   {{.Path}} - {{.Width}}x{{.Height}} ({{.Data.Description}})
+{{end}}
 {{end}}`
 
 const POST_VALID_IMAGEMETA_HTML = `<!DOCTYPE html>
