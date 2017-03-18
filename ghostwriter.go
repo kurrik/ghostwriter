@@ -123,8 +123,6 @@ func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 	defer func() {
 		if err := fsrc.Close(); err != nil {
 			gw.log.Printf("Problem closing %v: %v\n", src, err)
-		} else {
-			gw.log.Printf("Closed %v\n", src)
 		}
 	}()
 
@@ -135,8 +133,6 @@ func (gw *GhostWriter) copyFile(src string, dst string) (n int64, err error) {
 	defer func() {
 		if err := fdst.Close(); err != nil {
 			gw.log.Printf("Problem closing %v: %v\n", dst, err)
-		} else {
-			gw.log.Printf("Closed %v\n", dst)
 		}
 	}()
 
