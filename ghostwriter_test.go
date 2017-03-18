@@ -411,10 +411,24 @@ func TestPostContentCopied(t *testing.T) {
 	WriteFile(fs, "src/posts/01-test/body.md", "")
 	WriteFile(fs, "src/posts/01-test/meta.yaml", POST_1_META)
 	WriteFile(fs, "src/posts/01-test/content.png", content)
+	WriteFile(fs, "src/posts/01-test/subdir/content.png", content)
+	WriteFile(fs, "src/posts/01-test/sub/dir/content.png", content)
 	if err = gw.Process(); err != nil {
 		t.Fatalf("Error: %v", err)
 	}
 	if out, err = ReadFile(fs, "build/2012-09-07/hello-world/content.png"); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out != content {
+		t.Fatalf("Read:\n%v\nExpected:\n%v", out, content)
+	}
+	if out, err = ReadFile(fs, "build/2012-09-07/hello-world/subdir/content.png"); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	if out != content {
+		t.Fatalf("Read:\n%v\nExpected:\n%v", out, content)
+	}
+	if out, err = ReadFile(fs, "build/2012-09-07/hello-world/sub/dir/content.png"); err != nil {
 		t.Fatalf("Error: %v", err)
 	}
 	if out != content {

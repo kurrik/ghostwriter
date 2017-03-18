@@ -485,7 +485,30 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 	if names, err = gw.readDir(post.SrcDir); err != nil {
 		return
 	}
-	for _, name := range names {
+	for i := 0; i < len(names); i++ {
+		var (
+			name     string
+			namePath string
+			nameInfo os.FileInfo
+			subNames []string
+			subPath  string
+		)
+		name = names[i]
+		namePath = filepath.Join(post.SrcDir, name)
+		if nameInfo, err = gw.fs.Stat(namePath); err != nil {
+			return
+		}
+		if nameInfo.IsDir() {
+			if subNames, err = gw.readDir(namePath); err != nil {
+				return
+			}
+			subPath = filepath.Join(gw.args.dst, postpath, name)
+			gw.fs.MkdirAll(subPath, 0755)
+			for _, subName := range subNames {
+				names = append(names, filepath.Join(name, subName))
+			}
+			continue
+		}
 		switch filepath.Ext(name) {
 		case ".md":
 		case ".yaml":
