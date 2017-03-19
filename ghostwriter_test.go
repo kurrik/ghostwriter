@@ -693,3 +693,74 @@ func TestImagemetaValid(t *testing.T) {
 	}
 	LooseCompareFile(t, fs, "build/2017-03-16/imagemeta/index.html", POST_VALID_IMAGEMETA_HTML)
 }
+
+const YAMLTEMPLATE_META = `
+date: 2017-03-19
+slug: yamltemplate
+title: Yamltemplate`
+
+const YAMLTEMPLATE_BODY = `
+{{define "testdata"}}
+gallery:
+  - image: {{imagemeta "image01.png" | tojson}}
+    thumb: {{imagemeta "image01_thumb.png" | tojson}}
+    description: Image One
+  - image: {{imagemeta "image02.png" | tojson}}
+    thumb: {{imagemeta "image02_thumb.png" | tojson}}
+    description: Image Two
+{{end}}
+
+{{define "rendertestdata"}}
+{{range .gallery}}
+  Description: {{.description}}
+  Image: {{.image.Path}}
+  Thumb: {{.thumb.Path}}
+{{end}}
+{{end}}
+
+This post makes a valid yamltemplate reference.
+{{template "rendertestdata" (yamltemplate "testdata")}}`
+
+const YAMLTEMPLATE_VALID_HTML = `<!DOCTYPE html>
+<html>
+  <head>
+  <title>Test blog - Yamltemplate</title>
+  <link rel="canonical" href="http://www.example.com/2017-03-19/yamltemplate" />
+  </head>
+  <body>
+    <h1>Yamltemplate</h1>
+    <div>
+      <p>This post makes a valid yamltemplate reference.</p>
+      <p>
+        Description: Image One
+        Image: /2017-03-19/yamltemplate/image01.png
+        Thumb: /2017-03-19/yamltemplate/image01_thumb.png
+      </p>
+      <p>
+        Description: Image Two
+        Image: /2017-03-19/yamltemplate/image02.png
+        Thumb: /2017-03-19/yamltemplate/image02_thumb.png
+      </p>
+    </div>
+  </body>
+</html>`
+
+func TestYamltemplateValid(t *testing.T) {
+	var (
+		err error
+	)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/root.tmpl", SITE_TMPL)
+	WriteFile(fs, "src/templates/post.tmpl", POST_TMPL)
+	WriteFile(fs, "src/posts/01-test/body.md", YAMLTEMPLATE_BODY)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", YAMLTEMPLATE_META)
+	WriteBase64File(fs, "src/posts/01-test/image01.png", BASE64_IMAGE)
+	WriteBase64File(fs, "src/posts/01-test/image01_thumb.png", BASE64_IMAGE)
+	WriteBase64File(fs, "src/posts/01-test/image02.png", BASE64_IMAGE)
+	WriteBase64File(fs, "src/posts/01-test/image02_thumb.png", BASE64_IMAGE)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	LooseCompareFile(t, fs, "build/2017-03-19/yamltemplate/index.html", YAMLTEMPLATE_VALID_HTML)
+}

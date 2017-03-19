@@ -17,6 +17,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/kurrik/fauxfile"
 	"github.com/kurrik/tmpl"
@@ -562,6 +563,36 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		)
 		if img, ferr = NewImageMeta(gw.fs, srcPath, dstPath); ferr != nil {
 			ferr = fmt.Errorf("Could not load image metadata: %v", ferr)
+			return
+		}
+		return
+	}
+	(*fmap)["toyaml"] = func(in interface{}) (out string, ferr error) {
+		var outBytes []byte
+		if outBytes, ferr = yaml.Marshal(in); ferr != nil {
+			return
+		}
+		out = string(outBytes)
+		return
+	}
+	(*fmap)["tojson"] = func(in interface{}) (out string, ferr error) {
+		var outBytes []byte
+		if outBytes, ferr = json.Marshal(in); ferr != nil {
+			return
+		}
+		out = string(outBytes)
+		return
+	}
+	(*fmap)["yamltemplate"] = func(name string) (out interface{}, ferr error) {
+		var (
+			buff *bytes.Buffer = new(bytes.Buffer)
+		)
+		if ferr = tmpl.ExecuteTemplate(buff, name, nil); ferr != nil {
+			return
+		}
+		// Yaml must be encoded as a map!
+		out = map[string]interface{}{}
+		if ferr = yaml.Unmarshal(buff.Bytes(), out); ferr != nil {
 			return
 		}
 		return
