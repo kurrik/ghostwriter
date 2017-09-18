@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
@@ -32,6 +33,57 @@ type Post struct {
 	SrcDir  string
 	meta    *PostMeta
 	site    *Site
+	images  map[string]ImageMeta
+}
+
+func NewPost(id string, srcDir string, site *Site) *Post {
+	return &Post{
+		Id:     id,
+		SrcDir: srcDir,
+		site:   site,
+	}
+}
+
+// Parses post metadata at the supplied path and initializes the Post structure.
+// If any fields are invalid, err will be non-nil.
+func (p *Post) ParseMeta(gw *GhostWriter, path string) (err error) {
+	src := filepath.Join(gw.args.src, path)
+	p.meta = &PostMeta{}
+	if err = gw.unyaml(src, p.meta); err != nil {
+		return
+	}
+	if p.meta.Date == "" {
+		err = fmt.Errorf("Post meta must include date")
+		return
+	}
+	if p.meta.Slug == "" {
+		err = fmt.Errorf("Post meta must include slug")
+		return
+	}
+	if p.meta.Title == "" {
+		err = fmt.Errorf("Post meta must include title")
+		return
+	}
+	p.loadImageMeta(gw)
+	return
+}
+
+// Attempts to load ImageMeta data for images associated with the post metadata.
+func (p *Post) loadImageMeta(gw *GhostWriter) (err error) {
+	var (
+		dstPath string
+		srcPath string
+	)
+	p.images = map[string]ImageMeta{}
+	for k, v := range p.meta.Images {
+		srcPath = filepath.Join(p.SrcDir, v)
+		dstPath = p.resolvePath(v)
+		if p.images[k], err = NewImageMeta(gw.fs, srcPath, dstPath); err != nil {
+			err = fmt.Errorf("Could not load image metadata: %v", err)
+			return
+		}
+	}
+	return
 }
 
 // Returns the date of the post, as configured in the post metadata.
@@ -103,33 +155,51 @@ func (p *Post) Tags() (t []string) {
 	return
 }
 
+// Resolve a single path.
+func (p *Post) resolvePath(input string) (output string) {
+	var postpath string
+	if strings.HasPrefix(input, "/") {
+		output = input
+	} else {
+		postpath, _ = p.Path()
+		output = path.Join(postpath, input)
+	}
+	return
+}
+
 // Resolves paths for a list of inputs.
-func (p *Post) resolvePaths(input []string) (output []string) {
-	var (
-		i        = 0
-		postpath string
-	)
+func (p *Post) resolvePathsArray(input []string) (output []string) {
+	var i = 0
 	output = make([]string, len(input))
-	postpath, _ = p.Path()
 	for i = 0; i < len(input); i++ {
-		if strings.HasPrefix(input[i], "/") {
-			output[i] = input[i]
-		} else {
-			output[i] = path.Join(postpath, input[i])
-		}
+		output[i] = p.resolvePath(input[i])
 	}
 	return
 }
 
 // Returns any script URLs corresponding with the post.
 func (p *Post) Scripts() (s []string) {
-	s = p.resolvePaths(p.meta.Scripts)
+	s = p.resolvePathsArray(p.meta.Scripts)
 	return
 }
 
 // Returns any style URLs corresponding with the post.
 func (p *Post) Styles() (s []string) {
-	s = p.resolvePaths(p.meta.Styles)
+	s = p.resolvePathsArray(p.meta.Styles)
+	return
+}
+
+// Returns image metadata for all images associated with the post.
+func (p *Post) Images() (i map[string]ImageMeta) {
+	return p.images
+}
+
+// Returns image metadata for a single image associated with the post, by key.
+func (p *Post) Image(key string) (out ImageMeta, err error) {
+	var exists bool
+	if out, exists = p.images[key]; !exists {
+		err = fmt.Errorf("Invalid image key %v", key)
+	}
 	return
 }
 
@@ -150,4 +220,41 @@ func (p *Post) Next() *Post {
 // Returns the previous post, chronologically.
 func (p *Post) Prev() *Post {
 	return p.site.PrevPost(p)
+}
+
+// A list of posts.
+type Posts []*Post
+
+// Returns the length of the list.
+func (p Posts) Len() int {
+	return len(p)
+}
+
+// Swaps two posts in the given positions.
+func (p Posts) Swap(i int, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+// Given a map of id => *Post, return a list in arbitrary order.
+func PostsFromMap(m map[string]*Post) Posts {
+	p := make(Posts, len(m))
+	i := 0
+	for _, post := range m {
+		p[i] = post
+		i++
+	}
+	return p
+}
+
+// Wrapper for sorting posts chronologically, descending.
+type ByDateDesc struct{ Posts }
+
+// Compares two posts.
+func (p ByDateDesc) Less(i int, j int) bool {
+	di := p.Posts[i].SureDate()
+	dj := p.Posts[j].SureDate()
+	if di.Equal(dj) {
+		return p.Posts[i].Id > p.Posts[j].Id
+	}
+	return di.After(dj)
 }

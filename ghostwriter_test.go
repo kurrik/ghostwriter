@@ -764,3 +764,57 @@ func TestYamltemplateValid(t *testing.T) {
 	}
 	LooseCompareFile(t, fs, "build/2017-03-19/yamltemplate/index.html", YAMLTEMPLATE_VALID_HTML)
 }
+
+const POSTIMAGES_META = `
+date: 2017-09-17
+slug: postimages
+title: Post Images
+images:
+  image01: "image01.png"
+  image02: "image02.png"
+  image01_thumb: "image01_thumb.png"
+  image02_thumb: "image02_thumb.png"`
+
+const POSTIMAGES_BODY = `
+{{define "renderimage"}}
+  <img src="{{.Path}}" width="{{.Width}}" height="{{.Height}}" />
+{{end}}
+
+This post has valid image data associated with its metadata.
+{{template "renderimage" (.Image "image01")}}`
+
+const POSTIMAGES_VALID_HTML = `<!DOCTYPE html>
+<html>
+  <head>
+  <title>Test blog - Post Images</title>
+  <link rel="canonical" href="http://www.example.com/2017-09-17/postimages" />
+  </head>
+  <body>
+    <h1>Post Images</h1>
+    <div>
+      <p>This post has valid image data associated with its metadata.</p>
+      <p><img src="/2017-09-17/postimages/image01.png" width="250" height="340" /></p>
+    </div>
+  </body>
+</html>`
+
+func TestPostImagesValid(t *testing.T) {
+	var (
+		err error
+	)
+	gw, fs := Setup()
+	WriteFile(fs, "src/config.yaml", SITE_META)
+	WriteFile(fs, "src/templates/root.tmpl", SITE_TMPL)
+	WriteFile(fs, "src/templates/post.tmpl", POST_TMPL)
+	WriteFile(fs, "src/posts/01-test/body.md", POSTIMAGES_BODY)
+	WriteFile(fs, "src/posts/01-test/meta.yaml", POSTIMAGES_META)
+	WriteBase64File(fs, "src/posts/01-test/image01.png", BASE64_IMAGE)
+	WriteBase64File(fs, "src/posts/01-test/image01_thumb.png", BASE64_IMAGE)
+	WriteBase64File(fs, "src/posts/01-test/image02.png", BASE64_IMAGE)
+	WriteBase64File(fs, "src/posts/01-test/image02_thumb.png", BASE64_IMAGE)
+	if err = gw.Process(); err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+	LooseCompareFile(t, fs, "build/2017-09-17/postimages/index.html", POSTIMAGES_VALID_HTML)
+}
+

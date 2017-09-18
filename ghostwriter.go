@@ -204,13 +204,10 @@ func (gw *GhostWriter) parsePosts() (err error) {
 		}
 		msrc = filepath.Join(name, id, "meta.yaml")
 		if post, ok = gw.site.Posts[id]; ok == false {
-			post = &Post{
-				Id:     id,
-				SrcDir: filepath.Join(src, id),
-				site:   gw.site,
-			}
+			post = NewPost(id, filepath.Join(src, id), gw.site)
 		}
-		if post.meta, err = gw.parsePostMeta(msrc); err != nil {
+		gw.log.Printf("Parsing post meta %v\n", msrc)
+		if err = post.ParseMeta(gw, msrc); err != nil {
 			// Not a post, but don't raise an error.
 			gw.log.Printf("Invalid post at %v: %v\n", msrc, err)
 			return nil
@@ -607,7 +604,7 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 			return
 		}
 		body = new(bytes.Buffer)
-		if err = tmpl.Lookup("body").Execute(body, nil); err != nil {
+		if err = tmpl.Lookup("body").Execute(body, post); err != nil {
 			return
 		}
 
@@ -721,87 +718,3 @@ func (gw *GhostWriter) unyaml(path string, out interface{}) (err error) {
 	return
 }
 
-// Serializable metadata about the post.
-type PostMeta struct {
-	Tags    []string
-	Title   string
-	Date    string
-	Slug    string
-	Scripts []string
-	Styles  []string
-}
-
-// Represents a tag and the number of posts with that tag.
-type TagCount struct {
-	Tag   string
-	Count int
-}
-
-// A list of TagCounts
-type TagCounts []*TagCount
-
-// Compares two posts.
-func (tc TagCounts) Less(i int, j int) bool {
-	ci := tc[i].Count
-	cj := tc[j].Count
-	return ci > cj
-}
-
-// Returns the length of a set of tag counts.
-func (tc TagCounts) Len() int {
-	return len(tc)
-}
-
-// Swaps two tag counts in the given positions.
-func (tc TagCounts) Swap(i int, j int) {
-	tc[i], tc[j] = tc[j], tc[i]
-}
-
-// A list of posts.
-type Posts []*Post
-
-// Returns the length of the list.
-func (p Posts) Len() int {
-	return len(p)
-}
-
-// Swaps two posts in the given positions.
-func (p Posts) Swap(i int, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
-// Given a map of id => *Post, return a list in arbitrary order.
-func PostsFromMap(m map[string]*Post) Posts {
-	p := make(Posts, len(m))
-	i := 0
-	for _, post := range m {
-		p[i] = post
-		i++
-	}
-	return p
-}
-
-// Wrapper for sorting posts chronologically, descending.
-type ByDateDesc struct{ Posts }
-
-// Compares two posts.
-func (p ByDateDesc) Less(i int, j int) bool {
-	di := p.Posts[i].SureDate()
-	dj := p.Posts[j].SureDate()
-	if di.Equal(dj) {
-		return p.Posts[i].Id > p.Posts[j].Id
-	}
-	return di.After(dj)
-}
-
-// Serializable metadata about the site.
-type SiteMeta struct {
-	Title       string
-	Root        string
-	Author      string
-	Email       string
-	PathFormat  string
-	DateFormat  string
-	TagsFormat  string
-	RecentCount int
-}
