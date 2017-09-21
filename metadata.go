@@ -14,13 +14,37 @@
 
 package main
 
-// Serializable metadata about the post.
+// Serializable models used to configure sites, posts, etc.
+
+type SiteMeta struct {
+	Title       string
+	Root        string
+	Author      string
+	Email       string
+	PathFormat  string
+	DateFormat  string
+	TagsFormat  string
+	RecentCount int
+	Metadata    map[string]string
+}
+
 type PostMeta struct {
-	Tags    []string
-	Title   string
-	Date    string
-	Slug    string
-	Scripts []string
-	Styles  []string
-	Images  map[string]string
+	Tags     []string
+	Title    string
+	Date     string
+	Slug     string
+	Scripts  []string
+	Styles   []string
+	Images   map[string]ImageMeta
+	Metadata map[string]string
+}
+
+type ImageVariantMeta struct {
+	Src    *string
+}
+
+type ImageMeta struct {
+	Src      string
+	Variants map[string]ImageVariantMeta
+	Metadata map[string]string
 }

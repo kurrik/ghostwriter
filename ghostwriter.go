@@ -553,12 +553,13 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		}
 		return
 	}
-	(*fmap)["imagemeta"] = func(path string) (img ImageMeta, ferr error) {
+	// TODO: Migrate imagemeta -> imagedata
+	(*fmap)["imagemeta"] = func(path string) (img ImageData, ferr error) {
 		var (
 			srcPath string = filepath.Join(post.SrcDir, path)
 			dstPath string = filepath.Join(postpath, path)
 		)
-		if img, ferr = NewImageMeta(gw.fs, srcPath, dstPath); ferr != nil {
+		if img, ferr = NewImageData(gw.fs, srcPath, dstPath); ferr != nil {
 			ferr = fmt.Errorf("Could not load image metadata: %v", ferr)
 			return
 		}

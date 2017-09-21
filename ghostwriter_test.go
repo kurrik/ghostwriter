@@ -26,6 +26,9 @@ import (
 	"testing"
 )
 
+// Set to true to display build output from tests.
+const SHOW_OUTPUT = false
+
 func LooseCompare(t *testing.T, a string, b string) bool {
 	a = strings.Replace(a, " ", "", -1)
 	a = strings.Replace(a, "\n", "", -1)
@@ -60,8 +63,11 @@ func Setup() (gw *GhostWriter, fs *fauxfile.MockFilesystem) {
 	args := DefaultArgs()
 	args.dst = "build"
 	gw = NewGhostWriter(fs, args)
-	gw.log = log.New(ioutil.Discard, "", log.LstdFlags)
-	// gw.log = log.New(os.Stdout, "", log.LstdFlags)
+	if SHOW_OUTPUT {
+		gw.log = log.New(os.Stdout, "", log.LstdFlags)
+	} else {
+		gw.log = log.New(ioutil.Discard, "", log.LstdFlags)
+	}
 	return
 }
 
@@ -770,18 +776,33 @@ date: 2017-09-17
 slug: postimages
 title: Post Images
 images:
-  image01: "image01.png"
-  image02: "image02.png"
-  image01_thumb: "image01_thumb.png"
-  image02_thumb: "image02_thumb.png"`
+  image01:
+    src: "image01.png"
+    metadata:
+      href: "http://example.com/foo"
+      alt: "Test alt"
+  image02:
+    src: "image02.png"
+    variants:
+      thumb:
+        src: "image02_thumb.png"
+    metadata:
+      alt: "Alt2"
+`
+
+const RENDERIMAGE_TMPL = `
+{{define "renderimage"}}
+  {{if .Metadata.href}}<a href="{{.Metadata.href}}">{{end}}
+  {{if .Variants.thumb}}<img src="{{.Variants.thumb.Path}}" width="{{.Variants.thumb.Width}}" height="{{.Variants.thumb.Height}}" {{if .Metadata.alt}}alt="{{.Metadata.alt}}"{{end}}/>
+  {{else}}<img src="{{.Data.Path}}" width="{{.Data.Width}}" height="{{.Data.Height}}" {{if .Metadata.alt}}alt="{{.Metadata.alt}}"{{end}}/>{{end}}
+  {{if .Metadata.href}}</a>{{end}}
+{{end}}
+`
 
 const POSTIMAGES_BODY = `
-{{define "renderimage"}}
-  <img src="{{.Path}}" width="{{.Width}}" height="{{.Height}}" />
-{{end}}
-
 This post has valid image data associated with its metadata.
-{{template "renderimage" (.Image "image01")}}`
+{{template "renderimage" (.Image "image01")}}
+{{template "renderimage" (.Image "image02")}}`
 
 const POSTIMAGES_VALID_HTML = `<!DOCTYPE html>
 <html>
@@ -793,7 +814,8 @@ const POSTIMAGES_VALID_HTML = `<!DOCTYPE html>
     <h1>Post Images</h1>
     <div>
       <p>This post has valid image data associated with its metadata.</p>
-      <p><img src="/2017-09-17/postimages/image01.png" width="250" height="340" /></p>
+      <p><a href="http://example.com/foo"><img src="/2017-09-17/postimages/image01.png" width="250" height="340" alt="Test alt"/></a></p>
+      <p><img src="/2017-09-17/postimages/image02_thumb.png" width="250" height="340" alt="Alt2"/></p>
     </div>
   </body>
 </html>`
@@ -806,6 +828,7 @@ func TestPostImagesValid(t *testing.T) {
 	WriteFile(fs, "src/config.yaml", SITE_META)
 	WriteFile(fs, "src/templates/root.tmpl", SITE_TMPL)
 	WriteFile(fs, "src/templates/post.tmpl", POST_TMPL)
+	WriteFile(fs, "src/templates/renderimage.tmpl", RENDERIMAGE_TMPL)
 	WriteFile(fs, "src/posts/01-test/body.md", POSTIMAGES_BODY)
 	WriteFile(fs, "src/posts/01-test/meta.yaml", POSTIMAGES_META)
 	WriteBase64File(fs, "src/posts/01-test/image01.png", BASE64_IMAGE)
@@ -817,4 +840,3 @@ func TestPostImagesValid(t *testing.T) {
 	}
 	LooseCompareFile(t, fs, "build/2017-09-17/postimages/index.html", POSTIMAGES_VALID_HTML)
 }
-

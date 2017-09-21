@@ -33,7 +33,7 @@ type Post struct {
 	SrcDir  string
 	meta    *PostMeta
 	site    *Site
-	images  map[string]ImageMeta
+	images  map[string]*Image
 }
 
 func NewPost(id string, srcDir string, site *Site) *Post {
@@ -64,21 +64,19 @@ func (p *Post) ParseMeta(gw *GhostWriter, path string) (err error) {
 		err = fmt.Errorf("Post meta must include title")
 		return
 	}
-	p.loadImageMeta(gw)
+	p.loadImageData(gw)
 	return
 }
 
-// Attempts to load ImageMeta data for images associated with the post metadata.
-func (p *Post) loadImageMeta(gw *GhostWriter) (err error) {
-	var (
-		dstPath string
-		srcPath string
-	)
-	p.images = map[string]ImageMeta{}
-	for k, v := range p.meta.Images {
-		srcPath = filepath.Join(p.SrcDir, v)
-		dstPath = p.resolvePath(v)
-		if p.images[k], err = NewImageMeta(gw.fs, srcPath, dstPath); err != nil {
+// Attempts to load ImageData data for images associated with the post metadata.
+func (p *Post) loadImageData(gw *GhostWriter) (err error) {
+	var dstPath string
+	if dstPath, err = p.Path(); err != nil {
+		return
+	}
+	p.images = map[string]*Image{}
+	for k, imageMeta := range p.meta.Images {
+		if p.images[k], err = NewImage(gw, imageMeta, p.SrcDir, dstPath); err != nil {
 			err = fmt.Errorf("Could not load image metadata: %v", err)
 			return
 		}
@@ -155,6 +153,11 @@ func (p *Post) Tags() (t []string) {
 	return
 }
 
+// Returns any additional user-specified metadata.
+func (p *Post) Metadata() map[string]string {
+	return p.meta.Metadata
+}
+
 // Resolve a single path.
 func (p *Post) resolvePath(input string) (output string) {
 	var postpath string
@@ -190,12 +193,12 @@ func (p *Post) Styles() (s []string) {
 }
 
 // Returns image metadata for all images associated with the post.
-func (p *Post) Images() (i map[string]ImageMeta) {
+func (p *Post) Images() (i map[string]*Image) {
 	return p.images
 }
 
 // Returns image metadata for a single image associated with the post, by key.
-func (p *Post) Image(key string) (out ImageMeta, err error) {
+func (p *Post) Image(key string) (out *Image, err error) {
 	var exists bool
 	if out, exists = p.images[key]; !exists {
 		err = fmt.Errorf("Invalid image key %v", key)

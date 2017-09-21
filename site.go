@@ -87,6 +87,11 @@ func (s *Site) Email() string {
 	return s.meta.Email
 }
 
+// Returns any additional user-specified metadata.
+func (s *Site) Metadata() map[string]string {
+	return s.meta.Metadata
+}
+
 // Returns the posts of the site in desending chronological order.
 func (s *Site) PostsByDate() Posts {
 	p := PostsFromMap(s.Posts)
