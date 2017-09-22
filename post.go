@@ -153,6 +153,12 @@ func (p *Post) Tags() (t []string) {
 	return
 }
 
+// Returns whether user-specified metadata exists
+func (p *Post) HasMetadata(key string) (exists bool) {
+	_, exists = p.meta.Metadata[key]
+	return
+}
+
 // Returns any additional user-specified metadata.
 func (p *Post) Metadata() map[string]string {
 	return p.meta.Metadata
@@ -197,12 +203,18 @@ func (p *Post) Images() (i map[string]*Image) {
 	return p.images
 }
 
-// Returns image metadata for a single image associated with the post, by key.
-func (p *Post) Image(key string) (out *Image, err error) {
+// Returns a single image associated with the post, by key.
+func (p *Post) Image(key string) (out *Image) {
 	var exists bool
 	if out, exists = p.images[key]; !exists {
-		err = fmt.Errorf("Invalid image key %v", key)
+		out = nil
 	}
+	return
+}
+
+// Returns a single image associated with the post, by key.
+func (p *Post) HasImage(key string) (exists bool) {
+	_, exists = p.images[key]
 	return
 }
 
