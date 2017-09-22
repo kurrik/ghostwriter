@@ -97,6 +97,11 @@ func (i *Image) Variant(key string) (out ImageData, err error) {
 	return
 }
 
+func (i *Image) HasMetadata(key string) (exists bool) {
+	_, exists = i.meta.Metadata[key]
+	return
+}
+
 func (i *Image) Metadata() map[string]string {
 	return i.meta.Metadata
 }

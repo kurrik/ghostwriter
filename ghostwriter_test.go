@@ -792,16 +792,18 @@ images:
 
 const RENDERIMAGE_TMPL = `
 {{define "renderimage"}}
-  {{if .Metadata.href}}<a href="{{.Metadata.href}}">{{end}}
-  {{if .Variants.thumb}}<img src="{{.Variants.thumb.Path}}" width="{{.Variants.thumb.Width}}" height="{{.Variants.thumb.Height}}" {{if .Metadata.alt}}alt="{{.Metadata.alt}}"{{end}}/>
-  {{else}}<img src="{{.Data.Path}}" width="{{.Data.Width}}" height="{{.Data.Height}}" {{if .Metadata.alt}}alt="{{.Metadata.alt}}"{{end}}/>{{end}}
-  {{if .Metadata.href}}</a>{{end}}
+  {{- with .Metadata.href}}<a href="{{.}}">{{end -}}
+  {{- $img := or .Variants.thumb .Data -}}
+  <img src="{{$img.Path}}" width="{{$img.Width}}" height="{{$img.Height}}" {{with .Metadata.alt}}alt="{{.}}"{{end}}/>
+  {{- with .Metadata.href}}</a>{{end -}}
 {{end}}
 `
 
 const POSTIMAGES_BODY = `
 This post has valid image data associated with its metadata.
+
 {{template "renderimage" (.Image "image01")}}
+
 {{template "renderimage" (.Image "image02")}}`
 
 const POSTIMAGES_VALID_HTML = `<!DOCTYPE html>
