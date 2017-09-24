@@ -559,7 +559,7 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 			srcPath string = filepath.Join(post.SrcDir, path)
 			dstPath string = filepath.Join(postpath, path)
 		)
-		if img, ferr = NewImageData(gw.fs, srcPath, dstPath); ferr != nil {
+		if img, ferr = NewImageData(gw.fs, srcPath, dstPath, gw.site.Root()); ferr != nil {
 			ferr = fmt.Errorf("Could not load image metadata: %v", ferr)
 			return
 		}
@@ -718,4 +718,3 @@ func (gw *GhostWriter) unyaml(path string, out interface{}) (err error) {
 	err = yaml.Unmarshal(data, out)
 	return
 }
-

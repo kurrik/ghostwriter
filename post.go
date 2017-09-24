@@ -76,7 +76,7 @@ func (p *Post) loadImageData(gw *GhostWriter) (err error) {
 	}
 	p.images = map[string]*Image{}
 	for k, imageMeta := range p.meta.Images {
-		if p.images[k], err = NewImage(gw, imageMeta, p.SrcDir, dstPath); err != nil {
+		if p.images[k], err = NewImage(gw, imageMeta, p.SrcDir, dstPath, p.site.Root()); err != nil {
 			err = fmt.Errorf("Could not load image metadata: %v", err)
 			return
 		}

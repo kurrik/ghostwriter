@@ -25,12 +25,13 @@ import (
 )
 
 type ImageData struct {
-	Width  int
-	Height int
-	Path   string
+	Width     int
+	Height    int
+	Path      string
+	Permalink string
 }
 
-func NewImageData(fs fauxfile.Filesystem, srcPath string, dstPath string) (data ImageData, err error) {
+func NewImageData(fs fauxfile.Filesystem, srcPath string, dstPath string, siteRoot string) (data ImageData, err error) {
 	var (
 		img  image.Image
 		file fauxfile.File
@@ -43,9 +44,10 @@ func NewImageData(fs fauxfile.Filesystem, srcPath string, dstPath string) (data 
 		return
 	}
 	data = ImageData{
-		Width:  img.Bounds().Dx(),
-		Height: img.Bounds().Dy(),
-		Path:   dstPath,
+		Width:     img.Bounds().Dx(),
+		Height:    img.Bounds().Dy(),
+		Path:      dstPath,
+		Permalink: fmt.Sprintf("%v%v", siteRoot, dstPath),
 	}
 	return
 }
@@ -56,7 +58,7 @@ type Image struct {
 	variants map[string]ImageData
 }
 
-func NewImage(gw *GhostWriter, meta ImageMeta, postSrcDir string, postDstDir string) (out *Image, err error) {
+func NewImage(gw *GhostWriter, meta ImageMeta, postSrcDir string, postDstDir string, siteRoot string) (out *Image, err error) {
 	out = &Image{
 		meta:     meta,
 		variants: map[string]ImageData{},
@@ -65,14 +67,14 @@ func NewImage(gw *GhostWriter, meta ImageMeta, postSrcDir string, postDstDir str
 		srcPath string = filepath.Join(postSrcDir, meta.Src)
 		dstPath string = filepath.Join(postDstDir, meta.Src)
 	)
-	if out.data, err = NewImageData(gw.fs, srcPath, dstPath); err != nil {
+	if out.data, err = NewImageData(gw.fs, srcPath, dstPath, siteRoot); err != nil {
 		return
 	}
 	for key, variantMeta := range meta.Variants {
 		if variantMeta.Src != nil {
 			srcPath = filepath.Join(postSrcDir, *variantMeta.Src)
 			dstPath = filepath.Join(postDstDir, *variantMeta.Src)
-			if out.variants[key], err = NewImageData(gw.fs, srcPath, dstPath); err != nil {
+			if out.variants[key], err = NewImageData(gw.fs, srcPath, dstPath, siteRoot); err != nil {
 				return
 			}
 		}

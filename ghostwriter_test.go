@@ -794,7 +794,7 @@ const RENDERIMAGE_TMPL = `
 {{define "renderimage"}}
   {{- with .Metadata.href}}<a href="{{.}}">{{end -}}
   {{- $img := or .Variants.thumb .Data -}}
-  <img src="{{$img.Path}}" width="{{$img.Width}}" height="{{$img.Height}}" {{with .Metadata.alt}}alt="{{.}}"{{end}}/>
+  <img src="{{$img.Permalink}}" width="{{$img.Width}}" height="{{$img.Height}}" {{with .Metadata.alt}}alt="{{.}}"{{end}}/>
   {{- with .Metadata.href}}</a>{{end -}}
 {{end}}
 `
@@ -816,8 +816,8 @@ const POSTIMAGES_VALID_HTML = `<!DOCTYPE html>
     <h1>Post Images</h1>
     <div>
       <p>This post has valid image data associated with its metadata.</p>
-      <p><a href="http://example.com/foo"><img src="/2017-09-17/postimages/image01.png" width="250" height="340" alt="Test alt"/></a></p>
-      <p><img src="/2017-09-17/postimages/image02_thumb.png" width="250" height="340" alt="Alt2"/></p>
+      <p><a href="http://example.com/foo"><img src="http://www.example.com/2017-09-17/postimages/image01.png" width="250" height="340" alt="Test alt"/></a></p>
+      <p><img src="http://www.example.com/2017-09-17/postimages/image02_thumb.png" width="250" height="340" alt="Alt2"/></p>
     </div>
   </body>
 </html>`
