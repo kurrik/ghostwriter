@@ -204,22 +204,20 @@ func (p *Post) Images() (map[string]*Image) {
 }
 
 // Returns a single image associated with the post, by key.
-func (p *Post) Image(key string) (out *Image, err error) {
+func (p *Post) Image(key string) (out *Image) {
 	var exists bool
 	if out, exists = p.images[key]; !exists {
-		err = fmt.Errorf("Could not get image with key %v in post %v", key, p.Id)
-		return
+		out = nil
 	}
 	return
 }
 
 // Returns a list of images corresponding to the supplied keys.  If a key is
 // invalid, it is omitted from the output array.
-func (p *Post) ImageList(keys ...string) (out []*Image, err error) {
+func (p *Post) ImageList(keys ...string) (out []*Image) {
 	out = []*Image{}
-	var img *Image
 	for _, key := range keys {
-		img, err = p.Image(key)
+		img := p.Image(key)
 		if img != nil {
 			out = append(out, img)
 		}
