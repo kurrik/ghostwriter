@@ -207,7 +207,7 @@ func (p *Post) Images() (map[string]*Image) {
 func (p *Post) Image(key string) (out *Image, err error) {
 	var exists bool
 	if out, exists = p.images[key]; !exists {
-		err = fmt.Errorf("Could not get image with key %v from post", key)
+		err = fmt.Errorf("Could not get image with key %v in post %v", key, p.Id)
 		return
 	}
 	return
