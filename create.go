@@ -22,6 +22,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -64,12 +65,12 @@ func printPosts(gw *GhostWriter) (err error) {
 	// Supress logging for this function.
 	oldlog = gw.log
 	gw.log = log.New(ioutil.Discard, "", log.LstdFlags)
-
 	if names, err = gw.readDir(src); err != nil {
 		err = fmt.Errorf("Posts directory not found: %v", err)
 		gw.log = oldlog
 		return
 	}
+	sort.Strings(names)
 	for _, id = range names {
 		if !gw.isDir(filepath.Join(src, id)) {
 			continue
