@@ -213,6 +213,15 @@ func (p *Post) Image(key string) (out *Image, err error) {
 	return
 }
 
+// Returns a single image associated with the post, by key. Errors return nil.
+func (p *Post) ImageIfExists(key string) (out *Image) {
+	var exists bool
+	if out, exists = p.images[key]; !exists {
+		return nil
+	}
+	return
+}
+
 // Returns a list of images corresponding to the supplied keys.  If a key is
 // invalid, it is omitted from the output array.
 func (p *Post) ImageList(keys ...string) (out []*Image) {
