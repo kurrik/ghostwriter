@@ -199,7 +199,7 @@ func (p *Post) Styles() (s []string) {
 }
 
 // Returns image metadata for all images associated with the post.
-func (p *Post) Images() (map[string]*Image) {
+func (p *Post) Images() map[string]*Image {
 	return p.images
 }
 
@@ -218,8 +218,8 @@ func (p *Post) Image(key string) (out *Image, err error) {
 func (p *Post) ImageList(keys ...string) (out []*Image) {
 	out = []*Image{}
 	for _, key := range keys {
-		img := p.Image(key)
-		if img != nil {
+		img, err := p.Image(key)
+		if img != nil && err == nil {
 			out = append(out, img)
 		}
 	}
