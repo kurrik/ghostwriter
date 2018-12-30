@@ -33,14 +33,19 @@ type PostMeta struct {
 	Title    string
 	Date     string
 	Slug     string
-	Scripts  []string
+	Scripts  []ScriptMeta
 	Styles   []string
 	Images   map[string]ImageMeta
 	Metadata map[string]string
 }
 
+type ScriptMeta struct {
+	Src   string
+	Async bool
+}
+
 type ImageVariantMeta struct {
-	Src    *string
+	Src *string
 }
 
 type ImageMeta struct {

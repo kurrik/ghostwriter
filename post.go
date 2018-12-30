@@ -164,10 +164,17 @@ func (p *Post) Metadata() map[string]string {
 	return p.meta.Metadata
 }
 
+// Returns true if a path is absolute and should not be modified.
+func (p *Post) pathHasAbsolutePrefix(input string) bool {
+	return strings.HasPrefix(input, "/") ||
+		strings.HasPrefix(input, "https://") ||
+		strings.HasPrefix(input, "http://")
+}
+
 // Resolve a single path.
 func (p *Post) resolvePath(input string) (output string) {
 	var postpath string
-	if strings.HasPrefix(input, "/") {
+	if p.pathHasAbsolutePrefix(input) {
 		output = input
 	} else {
 		postpath, _ = p.Path()
@@ -176,25 +183,24 @@ func (p *Post) resolvePath(input string) (output string) {
 	return
 }
 
-// Resolves paths for a list of inputs.
-func (p *Post) resolvePathsArray(input []string) (output []string) {
+// Returns any script metadata corresponding with the post.
+func (p *Post) Scripts() (s []ScriptMeta) {
 	var i = 0
-	output = make([]string, len(input))
-	for i = 0; i < len(input); i++ {
-		output[i] = p.resolvePath(input[i])
+	s = make([]ScriptMeta, len(p.meta.Scripts))
+	for i = 0; i < len(p.meta.Scripts); i++ {
+		s[i] = p.meta.Scripts[i]
+		s[i].Src = p.resolvePath(s[i].Src)
 	}
-	return
-}
-
-// Returns any script URLs corresponding with the post.
-func (p *Post) Scripts() (s []string) {
-	s = p.resolvePathsArray(p.meta.Scripts)
 	return
 }
 
 // Returns any style URLs corresponding with the post.
 func (p *Post) Styles() (s []string) {
-	s = p.resolvePathsArray(p.meta.Styles)
+	var i = 0
+	s = make([]string, len(p.meta.Styles))
+	for i = 0; i < len(p.meta.Styles); i++ {
+		s[i] = p.resolvePath(p.meta.Styles[i])
+	}
 	return
 }
 

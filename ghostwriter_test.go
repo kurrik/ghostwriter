@@ -155,8 +155,10 @@ title: Hello Again!
 tags:
   - hello
 scripts:
-  - foo.js
-  - /bar.js
+  - src: foo.js
+  - src: /bar.js
+  - src: https://example.com/baz.js
+    async: true
 styles:
   - foo.css`
 
@@ -245,7 +247,7 @@ const POST_TMPL = `
   {{if .Post.Next}}<a href="{{.Post.Next.Path}}">Next Post</a>{{end}}
   {{if .Post.Prev}}<a href="{{.Post.Prev.Path}}">Prev Post</a>{{end}}
   {{range .Post.Scripts}}
-    <script src="{{.}}"></script>
+    <script src="{{.Src}}" {{- if .Async}} async{{end}}></script>
   {{end}}
 {{end}}`
 
@@ -302,6 +304,7 @@ const POST_2_HTML = `
     <a href="/2012-09-07/hello-world">Prev Post</a>
     <script src="/2012-09-09/hello-again/foo.js"></script>
     <script src="/bar.js"></script>
+    <script src="https://example.com/baz.js" async></script>
   </body>
 </html>`
 
