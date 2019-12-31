@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/kurrik/fauxfile"
 	"github.com/kurrik/tmpl"
-	"github.com/russross/blackfriday"
+	"gopkg.in/russross/blackfriday.v2"
 	"gopkg.in/yaml.v2"
 	"io"
 	"log"
@@ -610,7 +610,7 @@ func (gw *GhostWriter) renderPost(post *Post) (err error) {
 		}
 
 		// Render markdown
-		post.Body = string(blackfriday.MarkdownCommon(body.Bytes()))
+		post.Body = string(blackfriday.Run(body.Bytes()))
 
 		// Check for snippet
 		if index = strings.Index(post.Body, "<!--BREAK-->"); index != -1 {
